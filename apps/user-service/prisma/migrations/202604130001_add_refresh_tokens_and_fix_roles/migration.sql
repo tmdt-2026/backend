@@ -58,11 +58,10 @@ CREATE TABLE IF NOT EXISTS `REFRESH_TOKENS` (
 -- Update USER_DETAILS to match new schema (fullName, avatarUrl, dateOfBirth, gender)
 -- Check if old columns exist and rename/add as needed
 ALTER TABLE `USER_DETAILS`
-    -- Add new columns if they don't exist
-    ADD COLUMN IF NOT EXISTS `full_name` VARCHAR(255) NULL,
-    ADD COLUMN IF NOT EXISTS `avatar_url` VARCHAR(500) NULL,
-    ADD COLUMN IF NOT EXISTS `date_of_birth` DATE NULL,
-    ADD COLUMN IF NOT EXISTS `gender` ENUM('male', 'female', 'other') NULL;
+    CHANGE COLUMN `name` `full_name` VARCHAR(255) NULL,
+    DROP COLUMN `address`,
+    ADD COLUMN `date_of_birth` DATE NULL,
+    ADD COLUMN `gender` ENUM('male', 'female', 'other') NULL;
 
 -- Add foreign keys
 ALTER TABLE `USER_ADDRESSES`

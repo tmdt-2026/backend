@@ -20,7 +20,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly tokenService: TokenService,
-  ) {}
+  ) { }
 
   // POST /auth/register — 5 req/min
   @Public()

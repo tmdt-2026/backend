@@ -5,12 +5,12 @@
 
 generator client {
     provider = "prisma-client-js"
-    previewFeatures = ["driverAdapters"]
+    output   = "../../../node_modules/@prisma/product-client"
 }
 
 datasource db {
     provider = "mysql"
- 
+    url      = env("PRODUCT_DATABASE_URL")
 }
 
 // ============================================================
@@ -102,8 +102,8 @@ model ProductImage {
 // Mỗi variant = 1 SKU (màu + dung lượng + RAM)
 // ============================================================
 model ProductVariant {
-    id            String    @id @default(uuid()) @db.Char(36)
-    productId     String    @map("product_id") @db.Char(36)
+    id        String @id @default(uuid()) @db.Char(36)
+    productId String @map("product_id") @db.Char(36)
 
     color         String?   @db.VarChar(100)
     ram           Int?

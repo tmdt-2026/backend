@@ -5,7 +5,7 @@ import { CurrentUser, CurrentUserPayload } from '../common/decorators/current-us
 
 @Controller('users/me/fcm-token')
 export class FcmController {
-  constructor(private readonly fcmService: FcmService) {}
+  constructor(private readonly fcmService: FcmService) { }
 
   // POST /users/me/fcm-token
   @Post()

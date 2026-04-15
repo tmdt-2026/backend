@@ -1,63 +1,61 @@
 // ============================================================
 // Config Service — db_config
-// prisma/schema.prisma
 // ============================================================
 
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/config-client"
 }
 
 datasource db {
-    provider = "mysql"
+  provider = "mysql"
+  url      = env("CONFIG_DATABASE_URL")
 }
 
-// ============================================================
-// ENUMS
-// ============================================================
 enum SettingType {
-    string
-    number
-    boolean
-    json
-    html
+  string
+  number
+  boolean
+  json
+  html
 }
 
-// ============================================================
-// SETTINGS
-// Key-value store cho cấu hình hệ thống
-// Nhóm (group): general | contact | social | policy
-// ============================================================
 model Setting {
-    id           String      @id @default(uuid()) @db.Char(36)
-    settingKey   String      @unique @map("setting_key") @db.VarChar(255)
-    settingValue String?     @map("setting_value") @db.Text
-    settingType  SettingType @default(string) @map("setting_type")
-    group        String      @default("general") @db.VarChar(100)
-    description  String?     @map("description") @db.VarChar(500)
-    updatedAt    DateTime    @updatedAt @map("updated_at")
+  id           String      @id @default(uuid()) @db.Char(36)
+  settingKey   String      @unique @map("setting_key") @db.VarChar(255)
+  settingValue String?     @map("setting_value") @db.Text
+  settingType  SettingType @default(string) @map("setting_type")
+  group        String      @default("general") @db.VarChar(100)
+  description  String?     @db.VarChar(500)
+  isPublic     Boolean     @default(true) @map("is_public")
+  updatedBy    String?     @map("updated_by") @db.Char(36)
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  createdAt    DateTime    @default(now()) @map("created_at")
 
-    @@index([settingKey])
-    @@index([group])
-    @@map("SETTINGS")
+  @@index([group])
+  @@index([isPublic])
+  @@map("SETTINGS")
 }
 
-// ============================================================
-// BANNERS
-// ============================================================
 model Banner {
-    id        String    @id @default(uuid()) @db.Char(36)
-    title     String?   @db.VarChar(255)
-    imageUrl  String    @map("image_url") @db.VarChar(500)
-    targetUrl String?   @map("target_url") @db.VarChar(500)
-    position  String    @default("home_main") @db.VarChar(100)
-    sortOrder Int       @default(0) @map("sort_order")
-    startDate DateTime? @map("start_date")
-    endDate   DateTime? @map("end_date")
-    isActive  Boolean   @default(true) @map("is_active")
-    createdAt DateTime  @default(now()) @map("created_at")
-    updatedAt DateTime  @updatedAt @map("updated_at")
+  id             String    @id @default(uuid()) @db.Char(36)
+  title          String?   @db.VarChar(255)
+  imageUrl       String    @map("image_url") @db.VarChar(500)
+  mobileImageUrl String?   @map("mobile_image_url") @db.VarChar(500)
+  targetUrl      String?   @map("target_url") @db.VarChar(500)
+  altText        String?   @map("alt_text") @db.VarChar(255)
+  position       String    @default("home_main") @db.VarChar(100)
+  sortOrder      Int       @default(0) @map("sort_order")
+  startDate      DateTime? @map("start_date")
+  endDate        DateTime? @map("end_date")
+  isActive       Boolean   @default(true) @map("is_active")
+  clickCount     Int       @default(0) @map("click_count")
+  createdBy      String?   @map("created_by") @db.Char(36)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-    @@index([isActive, sortOrder])
-    @@index([startDate, endDate])
-    @@map("BANNERS")
+  @@index([position, isActive, sortOrder])
+  @@index([startDate, endDate])
+  @@index([isActive])
+  @@map("BANNERS")
 }

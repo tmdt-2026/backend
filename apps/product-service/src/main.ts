@@ -1,51 +1,81 @@
-// apps/product-service/src/main.ts
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-
-// PHẢI NẠP ENV TRƯỚC KHI IMPORT APP MODULE
-// Điều này giúp process.env có giá trị ngay khi NestJS khởi tạo các Provider (như Prisma)
-dotenv.config({ path: path.join(process.cwd(), '.env') });
-
 import { NestFactory } from '@nestjs/core';
 import { ProductServiceModule } from './product-service.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { existsSync } from 'fs';
+import { config as loadEnv } from 'dotenv';
+import { resolve } from 'path';
+import helmet from 'helmet';
+
+const rootEnvPath = [
+  resolve(process.cwd(), '.env'),
+  resolve(process.cwd(), '../../.env'),
+  resolve(__dirname, '../../../.env'),
+  resolve(__dirname, '../../../../.env'),
+].find((path) => existsSync(path));
+
+if (rootEnvPath) {
+  loadEnv({ path: rootEnvPath });
+}
 
 async function bootstrap() {
-  const logger = new Logger('Main');
+  const logger = new Logger('ProductService');
+
+  const rabbitmqUrl = process.env.RABBITMQ_URL ?? 'amqp://tmdt:tmdt2026@rabbitmq:5672';
+  const productQueue = process.env.PRODUCT_QUEUE ?? 'product_queue';
+  const port = process.env.PRODUCT_SERVICE_PORT ?? process.env.PORT ?? 3004;
 
   const app = await NestFactory.create(ProductServiceModule);
 
-  // 1. Cấu hình Cors để Frontend (HTML file) có thể gọi API
-  app.enableCors();
+  // RabbitMQ microservice transport
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.RMQ,
+    options: {
+      urls: [rabbitmqUrl],
+      queue: productQueue,
+      queueOptions: { durable: true },
+      prefetchCount: Number(process.env.PRODUCT_RABBITMQ_PREFETCH ?? 10),
+      persistent: true,
+    },
+  });
 
-  // 2. Cấu hình Global Prefix
-  app.setGlobalPrefix('api');
+  // Security headers
+  app.use(helmet());
 
-  // 3. Cấu hình Validation (Để các DTO @Min, @IsString hoạt động)
+  // CORS
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN ?? '*',
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
+    credentials: true,
+  });
+
+  // Global prefix
+  app.setGlobalPrefix('api/v1');
+
+  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: false, // Cho phép các trường không có trong DTO (như id, createdAt) mà không bị lỗi
+      forbidNonWhitelisted: false,
     }),
   );
 
+ product-service
   const port = process.env.PORT || 3002;
+
+  await app.startAllMicroservices();
+ main
   await app.listen(port);
 
-  logger.log(`🚀 Product Service is running on http://localhost:${port}`);
-
-  // Kiểm tra biến môi trường
-  if (process.env.DATABASE_URL) {
-    logger.log('✅ DATABASE_URL: Loaded');
-  } else {
-    logger.warn(
-      '⚠️  DATABASE_URL: Missing (Using hardcoded value if available)',
-    );
-  }
+  logger.log(`========================================`);
+  logger.log(`✅ Product Service running`);
+  logger.log(`   HTTP  : http://localhost:${port}`);
+  logger.log(`   Queue : ${productQueue}`);
+  logger.log(`========================================`);
 }
 
 bootstrap().catch((err) => {
-  console.error('❌ Failed to start application:', err);
+  console.error('❌ Failed to start Product Service:', err);
   process.exit(1);
 });

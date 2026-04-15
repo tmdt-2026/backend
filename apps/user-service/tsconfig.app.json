@@ -7,7 +7,7 @@
     "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts","prisma/**/*"],
   "exclude": [
     "node_modules",
     "**/*.spec.ts",

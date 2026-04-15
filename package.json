@@ -18,14 +18,21 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/tmdt/test/jest-e2e.json",
-    "prisma:generate": "npx prisma generate --schema=./apps/user-service/prisma/schema.prisma && npx prisma generate --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma generate --schema=./apps/review-service/prisma/schema.prisma",
-    "prisma:migrate": "npx prisma migrate deploy --schema=./apps/user-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/review-service/prisma/schema.prisma",
+    "prisma:generate": "npx prisma generate --schema=./apps/user-service/prisma/schema.prisma && npx prisma generate --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma generate --schema=./apps/review-service/prisma/schema.prisma && npx prisma generate --schema=./apps/product-service/prisma/schema.prisma && npx prisma generate --schema=./apps/config-service/prisma/schema.prisma",
+    "prisma:migrate": "npx prisma migrate deploy --schema=./apps/user-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/review-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/product-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/config-service/prisma/schema.prisma",
     "build:user-service": "nest build user-service",
     "build:tmdt": "nest build tmdt",
     "build:inventory": "nest build inventory-service",
-    "seed:user-service": "ts-node --project apps/user-service/tsconfig.app.json -r tsconfig-paths/register apps/user-service/prisma/seed.ts"
+    "build:product-service": "nest build product-service",
+    "seed:user-service": "ts-node --project apps/user-service/tsconfig.app.json -r tsconfig-paths/register apps/user-service/prisma/seed.ts",
+    "seed:product-service": "ts-node --project apps/product-service/tsconfig.app.json -r tsconfig-paths/register apps/product-service/prisma/seed.ts",
+    "seed:inventory-service": "ts-node --project apps/inventory-service/tsconfig.app.json -r tsconfig-paths/register apps/inventory-service/prisma/seed.ts",
+    "seed:review-service": "ts-node --project apps/review-service/tsconfig.app.json -r tsconfig-paths/register apps/review-service/prisma/seed.ts",
+    "seed:config-service": "ts-node --project apps/config-service/tsconfig.app.json -r tsconfig-paths/register apps/config-service/prisma/seed.ts",
+    "seed:all": "npm run seed:user-service && npm run seed:product-service && npm run seed:inventory-service && npm run seed:review-service && npm run seed:config-service"
   },
   "dependencies": {
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^10.0.0",
@@ -34,10 +41,13 @@
     "@nestjs/microservices": "^10.0.0",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/schedule": "^6.1.1",
     "@nestjs/throttler": "^6.5.0",
     "@prisma/client": "^5.15.0",
+    "@types/multer": "^2.1.0",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.4",
+    "axios": "^1.15.0",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
@@ -45,12 +55,14 @@
     "dotenv": "^16.0.0",
     "helmet": "^8.1.0",
     "moment": "^2.30.1",
+    "dotenv": "^17.4.1",
+    "helmet": "^8.1.0",
+    "http-proxy-middleware": "^2.0.9",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
-    "tsx": "^4.21.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -67,8 +79,6 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
     "@types/supertest": "^2.0.12",
-    "@types/uuid": "^10.0.0",
-    "dotenv": "^17.4.1",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.2.2",
@@ -84,5 +94,8 @@
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0"
+  },
+  "prisma": {
+    "seed": "node dist/apps/user-service/src/prisma/seed.js"
   }
 }

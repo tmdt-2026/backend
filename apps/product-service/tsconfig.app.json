@@ -1,9 +1,17 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "declaration": false,
-    "outDir": "../../dist/apps/product-service"
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "outDir": "../../dist/apps/product-service",
+    "rootDir": ".",
+    "types": ["node"]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts",
+    "prisma.config.ts",
+    "webpack.config.js"
+  ]
 }

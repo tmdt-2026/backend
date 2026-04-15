@@ -1,38 +1,22 @@
-// src/prisma/prisma.service.ts
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { PrismaClient } from '@prisma/product-client';
 
 @Injectable()
-export class PrismaService 
-  extends PrismaClient 
-  implements OnModuleInit, OnModuleDestroy 
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
 {
-  constructor() {
-    const adapter = new PrismaMariaDb({
-      host: 'localhost',
-      port: 3306,
-      user: 'root',
-      password: '',                    // để '' nếu root không có mật khẩu
-      database: 'product_db',
-      connectionLimit: 10,
-      acquireTimeout: 20000,           // tăng timeout
-    });
+  private readonly logger = new Logger(PrismaService.name);
 
+  constructor() {
     super({
-      adapter,
-      log: ['query', 'error'],
+      log: process.env.NODE_ENV === 'development' ? ['error'] : ['error'],
     });
   }
 
   async onModuleInit() {
-    try {
-      await this.$connect();
-      console.log('✅ Prisma connected successfully with root user');
-    } catch (error: any) {
-      console.error('❌ Prisma connection failed:', error.message);
-      throw error;
-    }
+    await this.$connect();
+    this.logger.log('✅ Prisma connected to product database');
   }
 
   async onModuleDestroy() {

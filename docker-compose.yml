@@ -9,7 +9,6 @@ volumes:
   mysql_data:
 
 services:
-  # ─── RABBITMQ ──────────────────────────────────────────────────────────────
   rabbitmq:
     image: rabbitmq:3.13-management
     container_name: rabbitmq_tmdt
@@ -22,14 +21,7 @@ services:
       RABBITMQ_DEFAULT_PASS: tmdt2026
     networks:
       - tmdt-network
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
-  # ─── MYSQL ─────────────────────────────────────────────────────────────────
   mysql:
     image: mysql:8
     container_name: mysql_tmdt
@@ -43,14 +35,7 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - tmdt-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
 
-  # ─── API GATEWAY ───────────────────────────────────────────────────────────
   api-gateway:
     build:
       context: .
@@ -62,26 +47,13 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      RABBITMQ_URL: amqp://tmdt:tmdt2026@rabbitmq:5672
-      USER_QUEUE: user_queue
-      PRODUCT_QUEUE: product_queue
-      ORDER_QUEUE: order_queue
-      PAYMENT_QUEUE: payment_queue
-      PROMOTION_QUEUE: promotion_queue
-      REVIEW_QUEUE: review_queue
-      CONFIG_QUEUE: config_queue
-      NOTIFICATION_QUEUE: notification_queue
-      INVENTORY_QUEUE: inventory_queue
+    env_file:
+      - .env.docker
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - rabbitmq
     networks:
       - tmdt-network
 
-  # ─── USER SERVICE ──────────────────────────────────────────────────────────
   user-service:
     build:
       context: .
@@ -93,22 +65,14 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      # ✅ Thống nhất tên biến
-      RABBITMQ_URL: amqp://tmdt:tmdt2026@rabbitmq:5672
-      RABBITMQ_QUEUE: user_queue
-      DATABASE_URL: mysql://root:password@mysql:3306/db_users
+    env_file:
+      - .env.docker
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      mysql:
-        condition: service_healthy
+      - rabbitmq
+      - mysql
     networks:
       - tmdt-network
 
-  # ─── REVIEW SERVICE ────────────────────────────────────────────────────────
   review-service:
     build:
       context: .
@@ -120,21 +84,33 @@ services:
     restart: unless-stopped
     ports:
       - "3002:3002"
-    environment:
-      NODE_ENV: production
-      PORT: 3002
-      RABBITMQ_URL: amqp://tmdt:tmdt2026@rabbitmq:5672
-      RABBITMQ_QUEUE: review_queue
-      DATABASE_URL: mysql://root:password@mysql:3306/db_reviews
+    env_file:
+      - .env.docker
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      mysql:
-        condition: service_healthy
+      - rabbitmq
+      - mysql
     networks:
       - tmdt-network
 
-  # ─── INVENTORY SERVICE ─────────────────────────────────────────────────────
+  product-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: product-service
+        HAS_PRISMA: "true"
+    container_name: product_service_tmdt
+    restart: unless-stopped
+    ports:
+      - "3004:3004"
+    env_file:
+      - .env.docker
+    depends_on:
+      - rabbitmq
+      - mysql
+    networks:
+      - tmdt-network
+
   inventory-service:
     build:
       context: .
@@ -146,17 +122,29 @@ services:
     restart: unless-stopped
     ports:
       - "3003:3003"
-    environment:
-      NODE_ENV: production
-      PORT: 3003
-      # ✅ Fix: Thống nhất RABBITMQ_URL (bỏ RABBITMQ_URI)
-      RABBITMQ_URL: amqp://tmdt:tmdt2026@rabbitmq:5672
-      INVENTORY_QUEUE: inventory_queue
-      DATABASE_URL: mysql://root:password@mysql:3306/db_inventory
+    env_file:
+      - .env.docker
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      mysql:
-        condition: service_healthy
+      - rabbitmq
+      - mysql
+    networks:
+      - tmdt-network
+
+  config-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: config-service
+        HAS_PRISMA: "true"
+    container_name: config_service_tmdt
+    restart: unless-stopped
+    ports:
+      - "3011:3011"
+    env_file:
+      - .env.docker
+    depends_on:
+      - rabbitmq
+      - mysql
     networks:
       - tmdt-network

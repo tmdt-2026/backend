@@ -4,7 +4,7 @@ import { QueryUsersDto } from './dto/query-users.dto';
 
 @Injectable()
 export class UsersRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async findById(id: string) {
     return this.prisma.user.findUnique({

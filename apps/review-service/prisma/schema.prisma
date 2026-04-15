@@ -1,51 +1,57 @@
 // ============================================================
 // Review Service — db_reviews
-// prisma/schema.prisma
 // ============================================================
 
 generator client {
     provider = "prisma-client-js"
+    output   = "../../../node_modules/@prisma/review-client"
 }
 
 datasource db {
     provider = "mysql"
+    url      = env("REVIEW_DATABASE_URL")
 }
 
-// ============================================================
-// REVIEWS
-// userId:    [REF: db_users    → User Service]
-// productId: [REF: db_products → Product Service]
-// orderId:   [REF: db_orders   → Order Service]
-// ============================================================
 model Review {
-    id        String   @id @default(uuid()) @db.Char(36)
-    userId    String   @map("user_id") @db.Char(36)
-    productId String   @map("product_id") @db.Char(36)
-    orderId   String   @map("order_id") @db.Char(36)
+    id        String  @id @default(uuid()) @db.Char(36)
+    userId    String  @map("user_id") @db.Char(36)
+    productId String  @map("product_id") @db.Char(36)
+    orderId   String  @map("order_id") @db.Char(36)
     rating    Int
-    content   String?  @db.Text
+    content   String? @db.Text
     images    Json?
-    isVisible Boolean  @default(true) @map("is_visible")
+
+    isVisible Boolean @default(true) @map("is_visible")
+    adminNote String? @map("admin_note") @db.VarChar(500)
+
+    userNameSnapshot    String? @map("user_name_snapshot") @db.VarChar(255)
+    productNameSnapshot String? @map("product_name_snapshot") @db.VarChar(255)
+
     createdAt DateTime @default(now()) @map("created_at")
 
     @@unique([userId, productId, orderId])
     @@index([productId])
+    @@index([productId, isVisible])
+    @@index([userId])
+    @@index([rating])
     @@map("REVIEWS")
 }
 
-// ============================================================
-// COMMENTS
-// Bình luận sản phẩm, hỗ trợ reply lồng nhau qua parentId
-// productId: [REF: db_products → Product Service]
-// userId:    [REF: db_users    → User Service]
-// ============================================================
 model Comment {
-    id        String   @id @default(uuid()) @db.Char(36)
-    productId String   @map("product_id") @db.Char(36)
-    userId    String   @map("user_id") @db.Char(36)
-    parentId  String?  @map("parent_id") @db.Char(36)
-    content   String   @db.Text
-    isVisible Boolean  @default(true) @map("is_visible")
+    id        String  @id @default(uuid()) @db.Char(36)
+    productId String  @map("product_id") @db.Char(36)
+    userId    String  @map("user_id") @db.Char(36)
+    parentId  String? @map("parent_id") @db.Char(36)
+    depth     Int     @default(0)
+    content   String  @db.Text
+    isVisible Boolean @default(true) @map("is_visible")
+    adminNote String? @map("admin_note") @db.VarChar(500)
+
+    editedAt DateTime? @map("edited_at")
+
+    userNameSnapshot String? @map("user_name_snapshot") @db.VarChar(255)
+    userRoleSnapshot String? @map("user_role_snapshot") @db.VarChar(50)
+
     createdAt DateTime @default(now()) @map("created_at")
     updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -53,5 +59,7 @@ model Comment {
     replies Comment[] @relation("CommentTree")
 
     @@index([productId, parentId])
+    @@index([productId, isVisible])
+    @@index([userId])
     @@map("COMMENTS")
 }
