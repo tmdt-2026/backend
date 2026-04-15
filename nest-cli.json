@@ -17,6 +17,12 @@
       "sourceRoot": "apps/user-service/src",
       "compilerOptions": {
         "tsConfigPath": "apps/user-service/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "prisma/**/*",
+            "outDir": "dist/apps/user-service"
+          }
+        ],
         "webpack": true,
         "webpackConfigPath": "apps/user-service/webpack.config.js"
       }
@@ -27,7 +33,9 @@
       "entryFile": "main",
       "sourceRoot": "apps/product-service/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/product-service/tsconfig.app.json"
+        "tsConfigPath": "apps/product-service/tsconfig.app.json",
+        "webpack": true,
+        "webpackConfigPath": "apps/product-service/webpack.config.js"
       }
     },
     "order-service": {
@@ -74,7 +82,15 @@
       "entryFile": "main",
       "sourceRoot": "apps/config-service/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/config-service/tsconfig.app.json"
+        "tsConfigPath": "apps/config-service/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "prisma/**/*",
+            "outDir": "dist/apps/config-service"
+          }
+        ],
+        "webpack": true,
+        "webpackConfigPath": "apps/config-service/webpack.config.js"
       }
     },
     "notification-service": {

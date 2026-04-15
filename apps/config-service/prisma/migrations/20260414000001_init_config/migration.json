@@ -1,0 +1,10 @@
+{
+  "id": "20260414000001_init_config",
+  "checksum": "0000000000000000000000000000000000000000000000000000000000000000",
+  "finishedAt": "2026-04-14T00:00:01.000Z",
+  "migrationName": "20260414000001_init_config",
+  "logs": null,
+  "rolledBack": false,
+  "startedAt": "2026-04-14T00:00:00.000Z",
+  "appliedStepsCount": 1
+}

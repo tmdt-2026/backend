@@ -97,7 +97,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 CMD ["sh", "-c", "\
   if [ \"$HAS_PRISMA\" = \"true\" ] && [ -f \"./prisma/schema.prisma\" ]; then \
     echo '🔄 Running Prisma migrations...'; \
-    ./node_modules/.bin/prisma migrate deploy --schema ./prisma/schema.prisma 2>/dev/null || true; \
+    ./node_modules/.bin/prisma migrate deploy --schema ./prisma/schema.prisma; \
     echo '✅ Migrations completed'; \
   fi && \
   echo \"🚀 Starting $APP_NAME...\" && \

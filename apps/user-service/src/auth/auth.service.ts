@@ -34,7 +34,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly configService: ConfigService,
     private readonly publisher: UserPublisher,
-  ) {}
+  ) { }
 
   async register(dto: RegisterDto): Promise<{ tokens: TokenPair; user: any }> {
     const email = dto.email.toLowerCase().trim();
@@ -89,7 +89,7 @@ export class AuthService {
         email: user.email,
         fullName: user.userDetail?.fullName ?? dto.userName,
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return { tokens, user: this.mapUser(user) };
   }
@@ -156,7 +156,7 @@ export class AuthService {
         email: user.email,
         resetToken: token,
       })
-      .catch(() => {});
+      .catch(() => { });
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

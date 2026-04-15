@@ -8,7 +8,7 @@ import { CurrentUser, CurrentUserPayload } from '../common/decorators/current-us
 
 @Controller('users/me/addresses')
 export class AddressesController {
-  constructor(private readonly addressesService: AddressesService) {}
+  constructor(private readonly addressesService: AddressesService) { }
 
   // GET /users/me/addresses
   @Get()

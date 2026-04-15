@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { existsSync } from 'fs';
+import { resolve } from 'path';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -18,11 +20,18 @@ import { jwtConfig } from './config/jwt.config';
 import { bcryptConfig } from './config/bcrypt.config';
 import { rabbitmqConfig } from './config/rabbitmq.config';
 
+const rootEnvPath = [
+  resolve(process.cwd(), '.env'),
+  resolve(process.cwd(), '../../.env'),
+  resolve(__dirname, '../../../.env'),
+  resolve(__dirname, '../../../../.env'),
+].find((path) => existsSync(path));
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env', 'apps/user-service/.env'],
+      envFilePath: rootEnvPath,
       load: [appConfig, jwtConfig, bcryptConfig, rabbitmqConfig],
     }),
     ThrottlerModule.forRoot([

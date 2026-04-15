@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
+import { AuthRpcController } from './auth.rpc.controller';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -22,7 +23,7 @@ import { PublishersModule } from '../publishers/publishers.module';
     }),
     PublishersModule,
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AuthRpcController],
   providers: [AuthService, TokenService, JwtStrategy, LocalStrategy],
   exports: [AuthService, TokenService, JwtModule],
 })
