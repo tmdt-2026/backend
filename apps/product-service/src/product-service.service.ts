@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { CreateModelDto } from './dto/create-model.dto';
 
 @Injectable()
 export class ProductService {
@@ -146,6 +148,47 @@ export class ProductService {
     return this.prisma.productVariant.findUnique({
       where: { id: variantId },
       select: { stockQuantity: true, isActive: true },
+    });
+  }
+  // ==================== CATEGORY ====================
+  async createCategory(data: CreateCategoryDto) {
+    return this.prisma.category.create({
+      data: {
+        id: data.id,
+        name: data.name,
+        slug: data.slug,
+        parentId: data.parentId || null,
+        sortOrder: data.sortOrder || 0,
+        isActive: true,
+      },
+    });
+  }
+
+  async findAllCategories() {
+    return this.prisma.category.findMany({
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+  // ==================== MODEL ====================
+  async createModel(data: CreateModelDto) {
+    return this.prisma.model.create({
+      data: {
+        id: data.id,
+        modelName: data.modelName,
+        modelNumber: data.modelNumber,
+        brand: data.brand,
+        cpu: data.cpu,
+        screenSize: data.screenSize,
+        operaSystem: data.operaSystem,
+        isActive: true,
+      },
+    });
+  }
+
+  async findAllModels() {
+    return this.prisma.model.findMany({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'desc' },
     });
   }
 }
