@@ -12,43 +12,33 @@ import { ProductService } from './product-service.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { CreateModelDto } from './dto/create-model.dto';
 
-// Sửa từ 'api/products' thành 'products'
 @Controller('products')
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
-  @Post()
-  async create(@Body() dto: CreateProductDto) {
-    return this.productService.createProduct(dto);
+  @Get('categories')
+  async getCategories() {
+    console.log('📂 Đang lấy danh sách danh mục...');
+    return this.productService.findAllCategories();
   }
 
-  @Get()
-  async findAll(
-    @Query('categoryId') categoryId?: string,
-    @Query('isActive') isActive?: string,
-  ) {
-    return this.productService.findAllProducts({
-      categoryId,
-      isActive: isActive === 'true',
-    });
+  @Get('models')
+  async getModels() {
+    console.log('📂 Đang lấy danh sách model...');
+    return this.productService.findAllModels();
   }
 
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.productService.findProductById(id);
+  @Post('categories')
+  async createCategory(@Body() dto: CreateCategoryDto) {
+    return this.productService.createCategory(dto);
   }
 
-  @Patch(':id')
-  async update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
-    return this.productService.updateProduct(id, dto);
-  }
-
-  @Delete(':id')
-  async softDelete(@Param('id') id: string) {
-    // Log để kiểm tra xem request có bay tới đây không
-    console.log('🗑️  Yêu cầu xóa sản phẩm ID:', id);
-    return this.productService.softDeleteProduct(id);
+  @Post('models')
+  async createModel(@Body() dto: CreateModelDto) {
+    return this.productService.createModel(dto);
   }
 
   @Patch('variants/:variantId')
@@ -70,5 +60,38 @@ export class ProductController {
       body.changedBy,
       body.reason,
     );
+  }
+
+  @Post()
+  async create(@Body() dto: CreateProductDto) {
+    return this.productService.createProduct(dto);
+  }
+
+  @Get()
+  async findAll(
+    @Query('categoryId') categoryId?: string,
+    @Query('isActive') isActive?: string,
+  ) {
+    return this.productService.findAllProducts({
+      categoryId,
+      isActive: isActive === 'true',
+    });
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    console.log('🔍 Đang tìm sản phẩm theo ID:', id);
+    return this.productService.findProductById(id);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
+    return this.productService.updateProduct(id, dto);
+  }
+
+  @Delete(':id')
+  async softDelete(@Param('id') id: string) {
+    console.log('🗑️  Yêu cầu xóa sản phẩm ID:', id);
+    return this.productService.softDeleteProduct(id);
   }
 }
