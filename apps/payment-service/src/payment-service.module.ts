@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { PaymentServiceController } from './payment-service.controller';
-import { PaymentServiceService } from './payment-service.service';
+import { PaymentController } from './payment-service.controller';
+import { PaymentService } from './payment-service.service';
+import { PrismaService } from '../prisma/prisma.service'; // Kiểm tra lại đường dẫn này
 
 @Module({
-  imports: [],
-  controllers: [PaymentServiceController],
-  providers: [PaymentServiceService],
+  controllers: [PaymentController],
+  providers: [PaymentService, PrismaService],
 })
-export class PaymentServiceModule {}
+export class PaymentModule {}
