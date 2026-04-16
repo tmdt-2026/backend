@@ -2,7 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestj
 import { PromotionService } from './promotion.service';
 import { CreatePromotionDto, UpdatePromotionDto, ApplyPromotionDto } from '../dto';
 
-@Controller('api/v1/promotions')
+@Controller('promotions')
 export class PromotionController {
   constructor(private readonly promotionService: PromotionService) {}
 

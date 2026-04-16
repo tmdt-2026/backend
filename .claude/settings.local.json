@@ -28,7 +28,8 @@
       "Bash(REVIEW_DATABASE_URL=\"mysql://root:root@localhost:3306/db\" npx prisma generate --schema=apps/review-service/prisma/schema.prisma)",
       "Bash(DATABASE_URL=\"mysql://root:root@localhost:3306/db\" npx prisma generate --schema=apps/user-service/prisma/schema.prisma)",
       "Bash(PRODUCT_DATABASE_URL=\"mysql://root:root@localhost:3306/db\" npx prisma generate --schema=apps/product-service/prisma/schema.prisma)",
-      "Bash(CONFIG_DATABASE_URL=\"mysql://root:root@localhost:3306/db\" npx prisma generate --schema=apps/config-service/prisma/schema.prisma)"
+      "Bash(CONFIG_DATABASE_URL=\"mysql://root:root@localhost:3306/db\" npx prisma generate --schema=apps/config-service/prisma/schema.prisma)",
+      "Read(//c/Projects/backend/**)"
     ]
   }
 }

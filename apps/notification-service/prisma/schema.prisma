@@ -1,0 +1,72 @@
+// ============================================================
+// Notification Service — db_notifications
+// prisma/schema.prisma
+// Prisma version: 5.x
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/notification-client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("NOTIFICATION_DATABASE_URL")
+}
+
+model EmailTemplate {
+  id          String   @id @default(uuid()) @db.Char(36)
+  key         String   @unique @db.VarChar(100)
+  name        String   @db.VarChar(255)
+  subject     String   @db.VarChar(500)
+  htmlBody    String   @map("html_body") @db.LongText
+  textBody    String?  @map("text_body") @db.Text
+  variables   Json
+  description String?  @db.VarChar(500)
+  isActive    Boolean  @default(true) @map("is_active")
+  isSystem    Boolean  @default(false) @map("is_system")
+  updatedBy   String?  @map("updated_by") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  logs EmailLog[]
+
+  @@index([key])
+  @@index([isActive])
+  @@map("EMAIL_TEMPLATES")
+}
+
+model EmailLog {
+  id            String      @id @default(uuid()) @db.Char(36)
+  templateId    String?     @map("template_id") @db.Char(36)
+  templateKey   String      @map("template_key") @db.VarChar(100)
+  toEmail       String      @map("to_email") @db.VarChar(255)
+  toName        String?     @map("to_name") @db.VarChar(255)
+  subject       String      @db.VarChar(500)
+  htmlBody      String      @map("html_body") @db.LongText
+  variables     Json?
+  status        EmailStatus @default(PENDING)
+  attempt       Int         @default(0)
+  sentAt        DateTime?   @map("sent_at")
+  failReason    String?     @map("fail_reason") @db.Text
+  referenceType String?     @map("reference_type") @db.VarChar(50)
+  referenceId   String?     @map("reference_id") @db.VarChar(100)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  template EmailTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([templateKey])
+  @@index([toEmail])
+  @@index([status])
+  @@index([referenceType, referenceId])
+  @@index([createdAt])
+  @@map("EMAIL_LOGS")
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+  PERMANENTLY_FAILED
+}

@@ -99,7 +99,20 @@
       "entryFile": "main",
       "sourceRoot": "apps/notification-service/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/notification-service/tsconfig.app.json"
+        "tsConfigPath": "apps/notification-service/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "prisma/**/*",
+            "outDir": "dist/apps/notification-service"
+          },
+          {
+            "include": "src/mailer/base-layout.hbs",
+            "outDir": "dist/apps/notification-service",
+            "flat": false
+          }
+        ],
+        "webpack": true,
+        "webpackConfigPath": "apps/notification-service/webpack.config.js"
       }
     },
      "inventory-service": {

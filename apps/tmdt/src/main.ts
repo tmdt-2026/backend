@@ -43,6 +43,7 @@ async function bootstrap() {
   const INVENTORY_SERVICE_URL = process.env.INVENTORY_SERVICE_URL ?? 'http://localhost:3003';
   const REVIEW_SERVICE_URL    = process.env.REVIEW_SERVICE_URL    ?? 'http://localhost:3002';
   const CONFIG_SERVICE_URL    = process.env.CONFIG_SERVICE_URL    ?? 'http://localhost:3011';
+  const PROMOTION_SERVICE_URL = process.env.PROMOTION_SERVICE_URL ?? 'http://localhost:3006';
 
   // Disable NestJS body parser — let http-proxy-middleware stream raw bodies
   // (required for multipart/form-data file uploads to pass through correctly)
@@ -75,6 +76,10 @@ async function bootstrap() {
   expressApp.use('/api/v1/config',     makeProxy(CONFIG_SERVICE_URL));
   expressApp.use('/internal/config',   makeProxy(CONFIG_SERVICE_URL));
 
+  // ── PROMOTION SERVICE ─────────────────────────────────────────────────────
+  expressApp.use('/api/v1/promotions', makeProxy(PROMOTION_SERVICE_URL));
+  expressApp.use('/internal/promotions', makeProxy(PROMOTION_SERVICE_URL));
+
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -91,6 +96,7 @@ async function bootstrap() {
   logger.log(`   invent  → ${INVENTORY_SERVICE_URL}`);
   logger.log(`   review  → ${REVIEW_SERVICE_URL}`);
   logger.log(`   config  → ${CONFIG_SERVICE_URL}`);
+  logger.log(`   promo   → ${PROMOTION_SERVICE_URL}`);
   logger.log('========================================');
 }
 

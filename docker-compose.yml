@@ -148,7 +148,26 @@ services:
       - mysql
     networks:
       - tmdt-network
-    
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: notification-service
+        HAS_PRISMA: "true"
+    container_name: notification_service_tmdt
+    restart: unless-stopped
+    ports:
+      - "3009:3009"
+    env_file:
+      - .env.docker
+    depends_on:
+      - rabbitmq
+      - mysql
+    networks:
+      - tmdt-network
+
   # cart-service:
   #   build:
   #     context: .

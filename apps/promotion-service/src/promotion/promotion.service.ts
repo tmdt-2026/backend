@@ -7,6 +7,16 @@ import { Promotion, DiscountType } from '@prisma/promotion-client';
 export class PromotionService {
   constructor(private prisma: PrismaService) {}
 
+  async findByCode(code: string) {
+    if (!code) {
+      return null;
+    }
+
+    return this.prisma.promotion.findUnique({
+      where: { code, isActive: true },
+    });
+  }
+
   async create(dto: CreatePromotionDto): Promise<Promotion> {
     // Kiểm tra code đã tồn tại
     const existing = await this.prisma.promotion.findUnique({ where: { code: dto.code } });
