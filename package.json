@@ -18,8 +18,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/tmdt/test/jest-e2e.json",
-    "prisma:generate": "npx prisma generate --schema=./apps/user-service/prisma/schema.prisma && npx prisma generate --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma generate --schema=./apps/review-service/prisma/schema.prisma && npx prisma generate --schema=./apps/product-service/prisma/schema.prisma && npx prisma generate --schema=./apps/config-service/prisma/schema.prisma",
-    "prisma:migrate": "npx prisma migrate deploy --schema=./apps/user-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/review-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/product-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/config-service/prisma/schema.prisma",
+    "prisma:generate": "npx prisma generate --schema=./apps/user-service/prisma/schema.prisma && npx prisma generate --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma generate --schema=./apps/review-service/prisma/schema.prisma && npx prisma generate --schema=./apps/product-service/prisma/schema.prisma && npx prisma generate --schema=./apps/config-service/prisma/schema.prisma && npx prisma generate --schema=./apps/promotion-service/prisma/schema.prisma",
+    "prisma:migrate": "npx prisma migrate deploy --schema=./apps/user-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/review-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/product-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/config-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/promotion-service/prisma/schema.prisma",
     "build:user-service": "nest build user-service",
     "build:tmdt": "nest build tmdt",
     "build:inventory": "nest build inventory-service",
@@ -29,7 +29,8 @@
     "seed:inventory-service": "ts-node --project apps/inventory-service/tsconfig.app.json -r tsconfig-paths/register apps/inventory-service/prisma/seed.ts",
     "seed:review-service": "ts-node --project apps/review-service/tsconfig.app.json -r tsconfig-paths/register apps/review-service/prisma/seed.ts",
     "seed:config-service": "ts-node --project apps/config-service/tsconfig.app.json -r tsconfig-paths/register apps/config-service/prisma/seed.ts",
-    "seed:all": "npm run seed:user-service && npm run seed:product-service && npm run seed:inventory-service && npm run seed:review-service && npm run seed:config-service"
+    "seed:all": "npm run seed:user-service && npm run seed:product-service && npm run seed:inventory-service && npm run seed:review-service && npm run seed:config-service && npm run seed:promotion-service",
+    "seed:promotion-service": "ts-node --project apps/promotion-service/tsconfig.app.json -r tsconfig-paths/register apps/promotion-service/prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
@@ -43,7 +44,7 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/schedule": "^6.1.1",
     "@nestjs/throttler": "^6.5.0",
-    "@prisma/client": "^5.15.0",
+    "@prisma/client": "^5.22.0",
     "@types/multer": "^2.1.0",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.4",

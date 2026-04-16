@@ -148,3 +148,41 @@ services:
       - mysql
     networks:
       - tmdt-network
+    
+  # cart-service:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #     args:
+  #       APP_NAME: cart-service
+  #       HAS_PRISMA: "true"
+  #   container_name: cart_service_tmdt
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3005:3005"
+  #   env_file:
+  #     - .env.docker
+  #   depends_on:
+  #     - rabbitmq
+  #     - mysql
+  #   networks:
+  #     - tmdt-network
+
+  promotion-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: promotion-service
+        HAS_PRISMA: "true"
+    container_name: promotion_service_tmdt
+    restart: unless-stopped
+    ports:
+      - "3006:3006"
+    env_file:
+      - .env.docker
+    depends_on:
+      - rabbitmq
+      - mysql
+    networks:
+      - tmdt-network
