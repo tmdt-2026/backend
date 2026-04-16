@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Thanh toán VNPAY</title>
+    <style>
+        :root { --primary: #005baa; --success: #28a745; --error: #dc3545; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f0f2f5; margin: 0; }
+        .card { background: white; padding: 2.5rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h2 { color: var(--primary); margin-bottom: 1.5rem; }
+        .input-group { text-align: left; margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #444; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; outline: none; }
+        input:focus { border-color: var(--primary); }
+        
+        .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s; margin-top: 10px; }
+        .btn-pay { background: var(--primary); color: white; }
+        .btn-pay:hover { background: #004488; transform: translateY(-2px); }
+        .btn-home { background: #f8f9fa; color: #333; border: 1px solid #ddd; }
+        
+        .status-icon { font-size: 60px; margin-bottom: 15px; }
+        .result-text { font-size: 18px; margin-bottom: 20px; line-height: 1.6; }
+        #loader { display: none; color: #666; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card" id="mainCard">
+    <div id="content">
+        <h2>Thanh toán VNPAY</h2>
+        <div class="input-group">
+            <label>Mã đơn hàng</label>
+            <input type="text" id="orderId" placeholder="Nhập mã đơn">
+        </div>
+        <div class="input-group">
+            <label>Số tiền (VNĐ)</label>
+            <input type="number" id="amount" value="50000">
+        </div>
+        <button class="btn btn-pay" onclick="pay()">Thanh toán ngay</button>
+        <button class="btn btn-home" onclick="location.reload()">Làm mới trang</button>
+        <div id="loader">🔄 Đang tạo liên kết...</div>
+    </div>
+</div>
+
+<script>
+    // 1. Tự động sinh mã đơn hàng theo thời gian cho chuyên nghiệp
+    if(!document.URL.includes('vnp_ResponseCode')) {
+        document.getElementById('orderId').value = 'BILL_' + Date.now().toString().slice(-6);
+    }
+
+    // 2. Logic gọi Backend để lấy link VNPAY
+    async function pay() {
+        const orderId = document.getElementById('orderId').value;
+        const amount = document.getElementById('amount').value;
+        const loader = document.getElementById('loader');
+
+        loader.style.display = "block";
+
+        try {
+            const response = await fetch('http://localhost:3002/api/payments/create-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: parseInt(amount), orderId: orderId })
+            });
+
+            const result = await response.json();
+            if (result.url) {
+                window.location.href = result.url;
+            } else {
+                alert("Lỗi: Backend không trả về URL");
+            }
+        } catch (error) {
+            alert("Lỗi kết nối: Hãy chắc chắn NestJS đang chạy ở port 3002");
+            loader.style.display = "none";
+        }
+    }
+
+    // 3. Logic xử lý kết quả khi VNPAY chuyển hướng về
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('vnp_ResponseCode')) {
+        const code = urlParams.get('vnp_ResponseCode');
+        const txnRef = urlParams.get('vnp_TxnRef');
+        const amount = parseInt(urlParams.get('vnp_Amount')) / 100;
+        const content = document.getElementById('content');
+
+        if (code === '00') {
+            content.innerHTML = `
+                <div class="status-icon" style="color: var(--success)">✔</div>
+                <h2 style="color: var(--success)">Thanh toán thành công</h2>
+                <div class="result-text">
+                    Đơn hàng: <b>${txnRef}</b><br>
+                    Số tiền: <b>${amount.toLocaleString()} VNĐ</b>
+                </div>
+                <button class="btn btn-pay" onclick="window.location.href=window.location.pathname">Thanh toán đơn mới</button>
+            `;
+        } else {
+            content.innerHTML = `
+                <div class="status-icon" style="color: var(--error)">✘</div>
+                <h2 style="color: var(--error)">Thanh toán thất bại</h2>
+                <p>Mã lỗi từ VNPAY: ${code}</p>
+                <button class="btn btn-home" onclick="window.location.href=window.location.pathname">Thử lại</button>
+            `;
+        }
+    }
+</script>
+
+</body>
+</html>
