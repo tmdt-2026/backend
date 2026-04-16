@@ -104,11 +104,6 @@
           {
             "include": "prisma/**/*",
             "outDir": "dist/apps/notification-service"
-          },
-          {
-            "include": "src/mailer/base-layout.hbs",
-            "outDir": "dist/apps/notification-service",
-            "flat": false
           }
         ],
         "webpack": true,

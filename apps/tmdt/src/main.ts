@@ -55,7 +55,7 @@ async function bootstrap() {
   expressApp.use('/api/v1/auth',       makeProxy(USER_SERVICE_URL));
   expressApp.use('/api/v1/users',      makeProxy(USER_SERVICE_URL));
   expressApp.use('/api/v1/addresses',  makeProxy(USER_SERVICE_URL));
-  expressApp.use('/api/v1/fcm',        makeProxy(USER_SERVICE_URL));
+  expressApp.use('/api/v1/users/me/fcm-tokens', makeProxy(USER_SERVICE_URL));
   expressApp.use('/internal/users',    makeProxy(USER_SERVICE_URL));
 
   // ── PRODUCT SERVICE ───────────────────────────────────────────────────────

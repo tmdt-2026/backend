@@ -21,7 +21,7 @@ Gateway không chứa business logic; nó chỉ reverse proxy các route HTTP sa
 | `/api/v1/auth`        | User Service      |
 | `/api/v1/users`       | User Service      |
 | `/api/v1/addresses`   | User Service      |
-| `/api/v1/fcm`         | User Service      |
+| `/api/v1/users/me/fcm-tokens` | User Service      |
 | `/internal/users`     | User Service      |
 | `/api/v1/products`    | Product Service   |
 | `/internal/products`  | Product Service   |

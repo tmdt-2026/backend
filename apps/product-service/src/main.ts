@@ -21,13 +21,17 @@ if (rootEnvPath) {
 async function bootstrap() {
   const logger = new Logger('ProductService');
 
-  const rabbitmqUrl = process.env.RABBITMQ_URL ?? 'amqp://tmdt:tmdt2026@rabbitmq:5672';
-  const productQueue = process.env.PRODUCT_QUEUE ?? 'product_queue';
-  const port = process.env.PRODUCT_SERVICE_PORT ?? process.env.PORT ?? 3004;
+  const rabbitmqUrl =
+    process.env.RABBITMQ_URL ?? 'amqp://tmdt:tmdt2026@rabbitmq:5672';
+
+  const productQueue =
+    process.env.PRODUCT_QUEUE ?? 'product_queue';
+
+  const port =
+    process.env.PRODUCT_SERVICE_PORT ?? process.env.PORT ?? 3004;
 
   const app = await NestFactory.create(ProductServiceModule);
 
-  // RabbitMQ microservice transport
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {
@@ -39,20 +43,16 @@ async function bootstrap() {
     },
   });
 
-  // Security headers
   app.use(helmet());
 
-  // CORS
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? '*',
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
     credentials: true,
   });
 
-  // Global prefix
   app.setGlobalPrefix('api/v1');
 
-  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -61,11 +61,7 @@ async function bootstrap() {
     }),
   );
 
- product-service
-  const port = process.env.PORT || 3002;
-
   await app.startAllMicroservices();
- main
   await app.listen(port);
 
   logger.log(`========================================`);

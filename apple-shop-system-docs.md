@@ -525,8 +525,8 @@ CUSTOMER        ORDER SVC       REVIEW SVC
 | PUT | `/users/me/addresses/:id` | customer | Cập nhật địa chỉ |
 | DELETE | `/users/me/addresses/:id` | customer | Xoá địa chỉ |
 | PATCH | `/users/me/addresses/:id/set-default` | customer | Đặt làm địa chỉ mặc định |
-| POST | `/users/me/fcm-token` | customer | Đăng ký FCM token thiết bị |
-| DELETE | `/users/me/fcm-token` | customer | Huỷ đăng ký FCM token |
+| POST | `/users/me/fcm-tokens` | customer | Đăng ký FCM token thiết bị |
+| DELETE | `/users/me/fcm-tokens/:token` | customer | Huỷ đăng ký FCM token |
 
 #### Admin — Quản Lý Người Dùng
 

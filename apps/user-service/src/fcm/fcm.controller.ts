@@ -3,11 +3,11 @@ import { FcmService } from './fcm.service';
 import { RegisterFcmDto } from './dto/register-fcm.dto';
 import { CurrentUser, CurrentUserPayload } from '../common/decorators/current-user.decorator';
 
-@Controller('users/me/fcm-token')
+@Controller('users/me/fcm-tokens')
 export class FcmController {
   constructor(private readonly fcmService: FcmService) { }
 
-  // POST /users/me/fcm-token
+  // POST /users/me/fcm-tokens
   @Post()
   @HttpCode(HttpStatus.OK)
   async registerToken(
@@ -17,7 +17,7 @@ export class FcmController {
     return this.fcmService.registerToken(user.userId, dto);
   }
 
-  // DELETE /users/me/fcm-token/:token
+  // DELETE /users/me/fcm-tokens/:token
   @Delete(':token')
   @HttpCode(HttpStatus.OK)
   async removeToken(

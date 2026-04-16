@@ -87,7 +87,8 @@ export class AuthService {
       .publishUserRegistered({
         userId: user.id,
         email: user.email,
-        fullName: user.userDetail?.fullName ?? dto.userName,
+        userName: user.userDetail?.fullName ?? user.userName,
+        loginUrl: process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : undefined,
       })
       .catch(() => { });
 
@@ -139,6 +140,7 @@ export class AuthService {
   async forgotPassword(email: string): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
+      include: { userDetail: true },
     });
 
     if (!user) return; // Silent — do not reveal whether email exists
@@ -149,12 +151,18 @@ export class AuthService {
       expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
     });
 
+    const resetUrl = process.env.FRONTEND_URL
+      ? `${process.env.FRONTEND_URL}/reset-password?token=${token}`
+      : `http://localhost:3000/reset-password?token=${token}`;
+
     // Publish event for notification service to send email
     this.publisher
       .publishPasswordReset({
         userId: user.id,
         email: user.email,
-        resetToken: token,
+        userName: user.userDetail?.fullName ?? user.userName,
+        resetUrl,
+        expiresIn: '15 phút',
       })
       .catch(() => { });
   }

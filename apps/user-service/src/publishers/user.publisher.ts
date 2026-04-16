@@ -12,15 +12,15 @@ export class UserPublisher {
     @Inject(RABBITMQ_CLIENT) private readonly client: ClientProxy,
   ) {}
 
-  async publishUserRegistered(data: { userId: string; email: string; fullName?: string }) {
+  async publishUserRegistered(data: { userId: string; email: string; userName: string; loginUrl?: string }) {
     return this.publish('user.registered', data);
   }
 
-  async publishPasswordReset(data: { userId: string; email: string; resetToken: string }) {
+  async publishPasswordReset(data: { userId: string; email: string; userName: string; resetUrl: string; expiresIn?: string }) {
     return this.publish('user.password_reset', data);
   }
 
-  async publishAccountLocked(data: { userId: string; email: string }) {
+  async publishAccountLocked(data: { userId: string; email: string; userName: string }) {
     return this.publish('user.account_locked', data);
   }
 

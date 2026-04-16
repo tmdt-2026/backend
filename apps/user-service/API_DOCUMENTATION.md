@@ -463,7 +463,7 @@ Tất cả fields đều optional — chỉ gửi fields muốn thay đổi.
 
 ```json
 {
-  "userName": "Nguyen Van B",
+ "userName": "Nguyen Van B",
   "fullName": "Nguyễn Văn B",
   "avatarUrl": "https://cdn.example.com/avatars/new.jpg",
   "dateOfBirth": "1995-08-15",
@@ -760,7 +760,7 @@ Quản lý Firebase Cloud Messaging token để nhận push notification.
 
 ### 8.1 Đăng Ký FCM Token
 
-**`POST /users/me/fcm-token`**
+**`POST /users/me/fcm-tokens`**
 
 **Auth:** Yêu cầu Bearer token
 
@@ -795,7 +795,7 @@ Quản lý Firebase Cloud Messaging token để nhận push notification.
 
 ### 8.2 Xoá FCM Token
 
-**`DELETE /users/me/fcm-token/:token`**
+**`DELETE /users/me/fcm-tokens/:token`**
 
 Xoá FCM token khi đăng xuất khỏi thiết bị.
 
@@ -825,43 +825,7 @@ Các endpoint này dành cho service khác trong hệ thống gọi đến. Yêu
 
 ---
 
-### 9.1 Xác Thực Access Token
-
-**`POST /internal/users/validate-token`**
-
-Dùng bởi API Gateway để xác thực JWT access token trước khi forward request.
-
-**Headers:**
-```
-X-Service-Token: internal-secret-token
-```
-
-**Request Body:**
-
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Response `200`:**
-
-```json
-{
-  "success": true,
-  "data": {
-    "userId": "550e8400-e29b-41d4-a716-446655440000",
-    "email": "user@example.com",
-    "roles": ["customer"]
-  }
-}
-```
-
-**Lỗi có thể xảy ra:** `INVALID_TOKEN` (401)
-
----
-
-### 9.2 Lấy Thông Tin User
+### 9.1 Lấy Thông Tin User
 
 **`GET /internal/users/:id`**
 
@@ -894,7 +858,7 @@ X-Service-Token: internal-secret-token
 
 ---
 
-### 9.3 Lấy Nhiều Users (Batch)
+### 9.2 Lấy Nhiều Users (Batch)
 
 **`POST /internal/users/batch`**
 

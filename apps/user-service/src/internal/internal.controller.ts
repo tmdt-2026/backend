@@ -1,45 +1,13 @@
-import { Controller, Post, Get, Param, Body, UseGuards } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { Controller, Post, Get, Param, Body, UseGuards, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ServiceAuthGuard } from '../common/guards/service-auth.guard';
-import { InvalidTokenException } from '../common/exceptions';
 
 @Controller('internal/users')
 @UseGuards(ServiceAuthGuard)
 export class InternalController {
   constructor(
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {}
-
-  // POST /internal/users/validate-token
-  @Post('validate-token')
-  async validateToken(@Body('token') token: string) {
-    try {
-      const payload = this.jwtService.verify<any>(token, {
-        secret: this.configService.get<string>('jwt.secret'),
-      });
-
-      if (payload.type !== 'access') throw new InvalidTokenException();
-
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
-        select: { id: true, isActive: true },
-      });
-
-      if (!user || !user.isActive) throw new InvalidTokenException();
-
-      return {
-        userId: payload.sub,
-        email: payload.email,
-        roles: payload.roles,
-      };
-    } catch {
-      throw new InvalidTokenException();
-    }
-  }
 
   // GET /internal/users/:id
   @Get(':id')
@@ -52,7 +20,7 @@ export class InternalController {
       },
     });
 
-    if (!user) throw new InvalidTokenException();
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
 
     return {
       id: user.id,
