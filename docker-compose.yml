@@ -30,6 +30,7 @@ services:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: tmdt_db
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -103,6 +104,25 @@ services:
     restart: unless-stopped
     ports:
       - "3004:3004"
+    env_file:
+      - .env.docker
+    depends_on:
+      - rabbitmq
+      - mysql
+    networks:
+      - tmdt-network
+
+  order-service:
+    build:
+      context: . 
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: order-service
+        HAS_PRISMA: "true"
+    container_name: order_service_tmdt
+    restart: unless-stopped
+    ports:
+      - "3005:3005"
     env_file:
       - .env.docker
     depends_on:
@@ -205,3 +225,4 @@ services:
       - mysql
     networks:
       - tmdt-network
+  
