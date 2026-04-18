@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Patch, Delete, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Patch, Query } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrderService } from './order-service.service';
@@ -27,10 +27,6 @@ updateStatus(
   @Body() dto: UpdateOrderStatusDto,
 ) {
   return this.orderService.updateStatus(id, dto);
-}
-  @Delete(':id')
-deleteOrder(@Param('id') id: string) {
-  return this.orderService.deleteOrder(id);
 }
   @Post(':id/cancel')
 cancelOrder(@Param('id') id: string) {
