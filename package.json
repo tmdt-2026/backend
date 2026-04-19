@@ -20,10 +20,16 @@
     "test:e2e": "jest --config ./apps/tmdt/test/jest-e2e.json",
     "prisma:generate": "npx prisma generate --schema=./apps/user-service/prisma/schema.prisma && npx prisma generate --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma generate --schema=./apps/review-service/prisma/schema.prisma && npx prisma generate --schema=./apps/product-service/prisma/schema.prisma && npx prisma generate --schema=./apps/config-service/prisma/schema.prisma && npx prisma generate --schema=./apps/promotion-service/prisma/schema.prisma && npx prisma generate --schema=./apps/notification-service/prisma/schema.prisma",
     "prisma:migrate": "npx prisma migrate deploy --schema=./apps/user-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/review-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/product-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/config-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/promotion-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/notification-service/prisma/schema.prisma",
-    "build:user-service": "nest build user-service",
     "build:tmdt": "nest build tmdt",
-    "build:inventory": "nest build inventory-service",
+    "build:user-service": "nest build user-service",
     "build:product-service": "nest build product-service",
+    "build:order-service": "nest build order-service",
+    "build:payment-service": "nest build payment-service",
+    "build:inventory-service": "nest build inventory-service",
+    "build:review-service": "nest build review-service",
+    "build:config-service": "nest build config-service",
+    "build:promotion-service": "nest build promotion-service",
+    "build:notification-service": "nest build notification-service",
     "seed:user-service": "ts-node --project apps/user-service/tsconfig.app.json -r tsconfig-paths/register apps/user-service/prisma/seed.ts",
     "seed:product-service": "ts-node --project apps/product-service/tsconfig.app.json -r tsconfig-paths/register apps/product-service/prisma/seed.ts",
     "seed:inventory-service": "ts-node --project apps/inventory-service/tsconfig.app.json -r tsconfig-paths/register apps/inventory-service/prisma/seed.ts",
@@ -31,8 +37,7 @@
     "seed:config-service": "ts-node --project apps/config-service/tsconfig.app.json -r tsconfig-paths/register apps/config-service/prisma/seed.ts",
     "seed:all": "npm run seed:user-service && npm run seed:product-service && npm run seed:inventory-service && npm run seed:review-service && npm run seed:config-service && npm run seed:promotion-service && npm run seed:notification-service",
     "seed:promotion-service": "ts-node --project apps/promotion-service/tsconfig.app.json -r tsconfig-paths/register apps/promotion-service/prisma/seed.ts",
-    "seed:notification-service": "ts-node --project apps/notification-service/tsconfig.app.json -r tsconfig-paths/register apps/notification-service/prisma/seed.ts",
-    "build:notification-service": "nest build notification-service"
+    "seed:notification-service": "ts-node --project apps/notification-service/tsconfig.app.json -r tsconfig-paths/register apps/notification-service/prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",

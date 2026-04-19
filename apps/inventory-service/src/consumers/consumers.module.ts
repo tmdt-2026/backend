@@ -6,6 +6,6 @@ import { PublishersModule } from '../publishers/publishers.module';
 
 @Module({
   imports: [InventoryModule, PublishersModule],
-  controllers: [OrderEventsConsumer, ProductEventsConsumer],
+  providers: [OrderEventsConsumer, ProductEventsConsumer],
 })
 export class ConsumersModule {}

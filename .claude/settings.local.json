@@ -34,7 +34,10 @@
       "Bash(grep -r \"jwt.secret\\\\|JWT_SECRET\\\\|jwt-secret\" /c/Projects/backend/apps/*/src/ --include=\"*.ts\")",
       "Bash(grep -r \"internal/products\\\\|internal/inventory\\\\|ServiceAuthGuard\" /c/Projects/backend/apps/*/src/ --include=\"*.controller.ts\")",
       "Bash(xargs grep *)",
-      "Bash(find *)"
+      "Bash(find *)",
+      "Bash(awk 'NR==73,NR==80' /c/Projects/backend/.env.docker)",
+      "Bash(awk 'NR==120,NR==140' /c/Projects/backend/.env.docker)",
+      "Bash(awk '/^[A-Z]/ && /_DATABASE_URL/ {print NR\": \"$0}' /c/Projects/backend/.env.docker)"
     ]
   }
 }

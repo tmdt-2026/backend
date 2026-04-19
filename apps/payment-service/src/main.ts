@@ -30,8 +30,12 @@ async function bootstrap() {
     logger: ['log', 'error', 'warn'],
   });
 
-  app.enableCors();
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN ?? '*',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    credentials: true,
+  });
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseInterceptor());
@@ -52,7 +56,7 @@ async function bootstrap() {
 
   logger.log('========================================');
   logger.log('✅ Payment Service running');
-  logger.log(`   HTTP  : http://localhost:${port}/api/payments`);
+  logger.log(`   HTTP  : http://localhost:${port}/api/v1/payments`);
   logger.log(`   Queue : ${paymentQueue}`);
   logger.log('========================================');
 }

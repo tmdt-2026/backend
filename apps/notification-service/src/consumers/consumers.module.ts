@@ -7,7 +7,7 @@ import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [NotificationModule],
-  controllers: [
+  providers: [
     UserEventsConsumer,
     OrderEventsConsumer,
     PaymentEventsConsumer,

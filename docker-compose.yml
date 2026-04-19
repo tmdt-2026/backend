@@ -115,7 +115,7 @@ services:
 
   order-service:
     build:
-      context: . 
+      context: .
       dockerfile: Dockerfile
       args:
         APP_NAME: order-service
@@ -126,6 +126,8 @@ services:
       - "3005:3005"
     env_file:
       - .env.docker
+    environment:
+      DATABASE_URL: mysql://root:password@mysql:3306/db_orders
     depends_on:
       - rabbitmq
       - mysql
@@ -145,27 +147,6 @@ services:
       - "3003:3003"
     env_file:
       - .env.docker
-    depends_on:
-      - rabbitmq
-      - mysql
-    networks:
-      - tmdt-network
-
-  order-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        APP_NAME: order-service
-        HAS_PRISMA: "true"
-    container_name: order_service_tmdt
-    restart: unless-stopped
-    ports:
-      - "3005:3005"
-    env_file:
-      - .env.docker
-    environment:
-      DATABASE_URL: mysql://root:password@mysql:3306/db_orders
     depends_on:
       - rabbitmq
       - mysql

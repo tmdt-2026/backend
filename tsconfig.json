@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "module": "CommonJS",
-    "moduleResolution": "node",
+    "moduleResolution": "node10",
+    "ignoreDeprecations": "5.0",
     "resolvePackageJsonExports": false,
     "esModuleInterop": true,
     "isolatedModules": true,
@@ -23,9 +24,16 @@
     "forceConsistentCasingInFileNames": false,
     "baseUrl": ".",
     "paths": {
+      "@tmdt/*": ["./apps/tmdt/src/*"],
       "@user-service/*": ["./apps/user-service/src/*"],
+      "@product-service/*": ["./apps/product-service/src/*"],
+      "@order-service/*": ["./apps/order-service/src/*"],
+      "@payment-service/*": ["./apps/payment-service/src/*"],
       "@inventory-service/*": ["./apps/inventory-service/src/*"],
-      "@tmdt/*": ["./apps/tmdt/src/*"]
+      "@review-service/*": ["./apps/review-service/src/*"],
+      "@config-service/*": ["./apps/config-service/src/*"],
+      "@promotion-service/*": ["./apps/promotion-service/src/*"],
+      "@notification-service/*": ["./apps/notification-service/src/*"]
     },
     "types": ["node", "jest"]
   },

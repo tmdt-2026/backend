@@ -121,24 +121,6 @@
         "webpackConfigPath": "apps/inventory-service/webpack.config.js"
       }
     },
-    "cart-service": {
-      "type": "application",
-      "root": "apps/cart-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/cart-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/cart-service/tsconfig.app.json"
-      }
-    },
-    "installment-service": {
-      "type": "application",
-      "root": "apps/installment-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/installment-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/installment-service/tsconfig.app.json"
-      }
-    },
     "tmdt": {
       "type": "application",
       "root": "apps/tmdt",

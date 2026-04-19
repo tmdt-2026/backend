@@ -61,7 +61,9 @@ async function bootstrap() {
   const INVENTORY_SERVICE_URL = process.env.INVENTORY_SERVICE_URL ?? 'http://localhost:3003';
   const REVIEW_SERVICE_URL    = process.env.REVIEW_SERVICE_URL    ?? 'http://localhost:3002';
   const CONFIG_SERVICE_URL    = process.env.CONFIG_SERVICE_URL    ?? 'http://localhost:3011';
-  const PROMOTION_SERVICE_URL = process.env.PROMOTION_SERVICE_URL ?? 'http://localhost:3006';
+  const PROMOTION_SERVICE_URL     = process.env.PROMOTION_SERVICE_URL     ?? 'http://localhost:3006';
+  const PAYMENT_SERVICE_URL       = process.env.PAYMENT_SERVICE_URL       ?? 'http://localhost:3007';
+  const NOTIFICATION_SERVICE_URL  = process.env.NOTIFICATION_SERVICE_URL  ?? 'http://localhost:3009';
 
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   const expressApp = app.getHttpAdapter().getInstance();
@@ -95,6 +97,14 @@ async function bootstrap() {
   expressApp.use('/api/v1/config',     makeProxy(CONFIG_SERVICE_URL));
   expressApp.use('/internal/config',   makeProxy(CONFIG_SERVICE_URL));
 
+  // PAYMENT
+  mountProxy(expressApp, '/api/v1/payments', PAYMENT_SERVICE_URL);
+  mountProxy(expressApp, '/internal/payments', PAYMENT_SERVICE_URL);
+
+  // NOTIFICATION
+  mountProxy(expressApp, '/api/v1/notifications', NOTIFICATION_SERVICE_URL);
+  mountProxy(expressApp, '/internal/notifications', NOTIFICATION_SERVICE_URL);
+
   // PROMOTION
   mountProxy(expressApp, '/api/v1/promotions', PROMOTION_SERVICE_URL);
   mountProxy(expressApp, '/internal/promotions', PROMOTION_SERVICE_URL);
@@ -116,8 +126,8 @@ async function bootstrap() {
   logger.log(`   invent  → ${INVENTORY_SERVICE_URL}`);
   logger.log(`   review  → ${REVIEW_SERVICE_URL}`);
   logger.log(`   config  → ${CONFIG_SERVICE_URL}`);
-  logger.log(`   order   → ${ORDER_SERVICE_URL}`);
   logger.log(`   payment → ${PAYMENT_SERVICE_URL}`);
+  logger.log(`   notif   → ${NOTIFICATION_SERVICE_URL}`);
   logger.log(`   promo   → ${PROMOTION_SERVICE_URL}`);
   logger.log('========================================');
 }

@@ -55,4 +55,7 @@ async function bootstrap() {
   logger.log(`   Queue : ${orderQueue}`);
   logger.log('========================================');
 }
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('❌ Failed to start Order Service:', err);
+  process.exit(1);
+});
