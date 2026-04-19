@@ -1,16 +1,12 @@
 import {
   BadRequestException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrderPublisher } from './publishers/order.publisher';
-import { ORDER_USER_RABBITMQ_CLIENT } from './publishers/publishers.module';
 
 type OrderDetailSummary = {
   product_variant_id: string;
@@ -29,7 +25,6 @@ export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly publisher: OrderPublisher,
-    @Inject(ORDER_USER_RABBITMQ_CLIENT) private readonly userClient: ClientProxy,
   ) {}
 
   async createOrder(dto: CreateOrderDto) {
@@ -92,7 +87,6 @@ export class OrderService {
       });
 
       return {
-        success: true,
         data: {
           id: newOrder.id,
           status: newOrder.status,
@@ -100,6 +94,16 @@ export class OrderService {
           discount_amount: newOrder.discount_amount,
           total_price: newOrder.total_price,
           total_product: newOrder.total_product,
+        },
+        event: {
+          orderId: newOrder.id,
+          userId: newOrder.user_id,
+          createdAt: newOrder.created_at.toISOString(),
+          items: newOrder.order_details.map((d) => ({
+            productVariantId: d.product_variant_id,
+            quantity: d.quantity,
+            price: Number(d.price),
+          })),
         },
       };
     });
