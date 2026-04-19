@@ -8,6 +8,7 @@ networks:
 volumes:
   mysql_data:
 
+
 services:
   rabbitmq:
     image: rabbitmq:3.13-management
@@ -30,6 +31,7 @@ services:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: tmdt_db
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -111,6 +113,27 @@ services:
     networks:
       - tmdt-network
 
+  order-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: order-service
+        HAS_PRISMA: "true"
+    container_name: order_service_tmdt
+    restart: unless-stopped
+    ports:
+      - "3005:3005"
+    env_file:
+      - .env.docker
+    environment:
+      DATABASE_URL: mysql://root:password@mysql:3306/db_orders
+    depends_on:
+      - rabbitmq
+      - mysql
+    networks:
+      - tmdt-network
+
   inventory-service:
     build:
       context: .
@@ -124,6 +147,27 @@ services:
       - "3003:3003"
     env_file:
       - .env.docker
+    depends_on:
+      - rabbitmq
+      - mysql
+    networks:
+      - tmdt-network
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: payment-service
+        HAS_PRISMA: "true"
+    container_name: payment_service_tmdt
+    restart: unless-stopped
+    ports:
+      - "3007:3007"
+    env_file:
+      - .env.docker
+    environment:
+      DATABASE_URL: mysql://root:password@mysql:3306/db_payments
     depends_on:
       - rabbitmq
       - mysql

@@ -16,23 +16,27 @@ Gateway không chứa business logic; nó chỉ reverse proxy các route HTTP sa
 
 ## Route map
 
-| Prefix trên gateway   | Service đích      |
-| --------------------- | ----------------- |
-| `/api/v1/auth`        | User Service      |
-| `/api/v1/users`       | User Service      |
-| `/api/v1/addresses`   | User Service      |
+| Prefix trên gateway           | Service đích      |
+| ----------------------------- | ----------------- |
+| `/api/v1/auth`                | User Service      |
+| `/api/v1/users`               | User Service      |
+| `/api/v1/addresses`           | User Service      |
 | `/api/v1/users/me/fcm-tokens` | User Service      |
-| `/internal/users`     | User Service      |
-| `/api/v1/products`    | Product Service   |
-| `/internal/products`  | Product Service   |
-| `/api/v1/inventory`   | Inventory Service |
-| `/internal/inventory` | Inventory Service |
-| `/api/v1/reviews`     | Review Service    |
-| `/api/v1/comments`    | Review Service    |
-| `/api/v1/uploads`     | Review Service    |
-| `/internal/reviews`   | Review Service    |
-| `/api/v1/config`      | Config Service    |
-| `/internal/config`    | Config Service    |
+| `/internal/users`             | User Service      |
+| `/api/v1/products`            | Product Service   |
+| `/internal/products`          | Product Service   |
+| `/api/v1/inventory`           | Inventory Service |
+| `/internal/inventory`         | Inventory Service |
+| `/api/v1/reviews`             | Review Service    |
+| `/api/v1/comments`            | Review Service    |
+| `/api/v1/uploads`             | Review Service    |
+| `/internal/reviews`           | Review Service    |
+| `/api/v1/config`              | Config Service    |
+| `/internal/config`            | Config Service    |
+| `/api/v1/orders`              | Order Service     |
+| `/internal/orders`            | Order Service     |
+| `/api/v1/payments`            | Payment Service   |
+| `/internal/payments`          | Payment Service   |
 
 ## Ghi chú
 

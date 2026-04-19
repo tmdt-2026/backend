@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ProductServiceModule } from './product-service.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { existsSync } from 'fs';
 import { config as loadEnv } from 'dotenv';
@@ -57,9 +59,11 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: false,
+      forbidNonWhitelisted: true,
     }),
   );
+  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalInterceptors(new ResponseInterceptor());
 
   await app.startAllMicroservices();
   await app.listen(port);

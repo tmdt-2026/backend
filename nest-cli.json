@@ -122,6 +122,7 @@
         "webpackConfigPath": "apps/inventory-service/webpack.config.js"
       }
     },
+<<<<<<< HEAD
     "cart-service": {
       "type": "application",
       "root": "apps/cart-service",
@@ -142,6 +143,8 @@
         "webpackConfigPath": "apps/installment-service/webpack.config.js"
       }
     },
+=======
+>>>>>>> 956dd0fd38dafd907c662683f46e8f70f843c173
     "tmdt": {
       "type": "application",
       "root": "apps/tmdt",

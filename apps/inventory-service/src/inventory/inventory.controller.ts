@@ -10,6 +10,7 @@ import { BulkCheckDto } from './dto/bulk-check.dto';
 import { QueryInventoryDto, QueryTransactionsDto, QueryLowStockDto } from './dto/query-inventory.dto';
 import { CurrentUser, UserPayload } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ServiceAuthGuard } from '../common/guards/service-auth.guard';
@@ -32,6 +33,7 @@ export class InventoryController {
   }
 
   @Post('bulk-check')
+  @Public()
   @UseGuards(ServiceAuthGuard)
   @HttpCode(HttpStatus.OK)
   bulkCheck(@Body() dto: BulkCheckDto) {

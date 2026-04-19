@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
@@ -9,6 +10,8 @@ import { InventoryModule } from './inventory/inventory.module';
 import { ConsumersModule } from './consumers/consumers.module';
 import { PublishersModule } from './publishers/publishers.module';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 import { HealthController } from './health/health.controller';
 import { appConfig } from './config/app.config';
 import { jwtConfig } from './config/jwt.config';
@@ -41,6 +44,10 @@ const rootEnvPath = [
     ConsumersModule,
   ],
   controllers: [HealthController],
-  providers: [JwtStrategy],
+  providers: [
+    JwtStrategy,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
 export class AppModule {}

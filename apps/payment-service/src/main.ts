@@ -1,27 +1,63 @@
-import * as dotenv from 'dotenv';
-import { join } from 'path';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { existsSync } from 'fs';
+import { config as loadEnv } from 'dotenv';
+import { resolve } from 'path';
 import { NestFactory } from '@nestjs/core';
 import { PaymentModule } from './payment-service.module';
-import { ValidationPipe } from '@nestjs/common';
+
+const rootEnvPath = [
+  resolve(process.cwd(), '.env'),
+  resolve(process.cwd(), '../../.env'),
+  resolve(__dirname, '../../../.env'),
+  resolve(__dirname, '../../../../.env'),
+].find((path) => existsSync(path));
+
+if (rootEnvPath) {
+  loadEnv({ path: rootEnvPath });
+}
 
 async function bootstrap() {
-  // Vì file .env nằm trong apps/payment-service/, ta dùng __dirname để tìm ngược lại
-  // Khi chạy dev, __dirname thường là apps/payment-service/src
-  dotenv.config({ path: join(__dirname, '../../payment-service', '.env') });
+  const logger = new Logger('PaymentService');
 
-  const app = await NestFactory.create(PaymentModule);
+  const rabbitmqUrl = process.env.RABBITMQ_URL ?? 'amqp://tmdt:tmdt2026@rabbitmq:5672';
+  const paymentQueue = process.env.PAYMENT_RABBITMQ_QUEUE ?? process.env.PAYMENT_QUEUE ?? 'payment_queue';
+  const port = parseInt(process.env.PAYMENT_SERVICE_PORT ?? process.env.PORT ?? '3007', 10);
 
-  app.enableCors();
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
-  app.setGlobalPrefix('api');
+  const app = await NestFactory.create(PaymentModule, {
+    logger: ['log', 'error', 'warn'],
+  });
 
-  const port = process.env.PORT || 3002;
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN ?? '*',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    credentials: true,
+  });
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.setGlobalPrefix('api/v1');
+  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalInterceptors(new ResponseInterceptor());
+
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.RMQ,
+    options: {
+      urls: [rabbitmqUrl],
+      queue: paymentQueue,
+      queueOptions: { durable: true },
+      prefetchCount: parseInt(process.env.PAYMENT_RABBITMQ_PREFETCH ?? '10', 10),
+      persistent: true,
+    },
+  });
+
+  await app.startAllMicroservices();
   await app.listen(port);
 
-  console.log(`🚀 Payment-service is running on: http://localhost:${port}/api`);
-  // Kiểm tra biến quan trọng nhất
-  console.log(
-    `🔗 Database URL: ${process.env.DATABASE_URL ? 'Đã nhận ✅' : 'Chưa tìm thấy file .env tại đường dẫn này ❌'}`,
-  );
+  logger.log('========================================');
+  logger.log('✅ Payment Service running');
+  logger.log(`   HTTP  : http://localhost:${port}/api/v1/payments`);
+  logger.log(`   Queue : ${paymentQueue}`);
+  logger.log('========================================');
 }
 bootstrap();

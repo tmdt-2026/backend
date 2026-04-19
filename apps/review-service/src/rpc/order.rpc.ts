@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom, timeout } from 'rxjs';
 import { OrderServiceUnavailableException } from '../common/exceptions/review.exceptions';
+
+export const REVIEW_ORDER_RMQ_CLIENT = 'REVIEW_ORDER_RMQ_CLIENT';
 
 export interface OrderRpcResponse {
   id: string;
@@ -18,34 +19,22 @@ export interface OrderRpcResponse {
 @Injectable()
 export class OrderRpc {
   private readonly logger = new Logger(OrderRpc.name);
-  private readonly baseUrl: string;
-  private readonly serviceToken: string;
-  private readonly timeout: number;
+  private readonly timeoutMs = parseInt(process.env.RPC_TIMEOUT_MS ?? '3000', 10);
 
   constructor(
-    private readonly httpService: HttpService,
-    private readonly config: ConfigService,
-  ) {
-    this.baseUrl = config.get<string>('rpc.orderServiceUrl')!;
-    this.serviceToken = config.get<string>('rpc.serviceToken')!;
-    this.timeout = config.get<number>('rpc.timeoutMs')!;
-  }
+    @Inject(REVIEW_ORDER_RMQ_CLIENT) private readonly client: ClientProxy,
+  ) {}
 
   async getOrderById(orderId: string): Promise<OrderRpcResponse | null> {
     try {
-      const res = await firstValueFrom(
-        this.httpService.get<OrderRpcResponse>(
-          `${this.baseUrl}/api/internal/orders/${orderId}`,
-          {
-            headers: { 'X-Service-Token': this.serviceToken },
-            timeout: this.timeout,
-          },
-        ),
+      const result = await firstValueFrom(
+        this.client
+          .send<OrderRpcResponse | null>({ cmd: 'order.get-by-id' }, { id: orderId })
+          .pipe(timeout(this.timeoutMs)),
       );
-      return res.data;
+      return result ?? null;
     } catch (err: any) {
-      if (err.response?.status === 404) return null;
-      this.logger.error(`Order Service error: ${err.message}`);
+      this.logger.error(`Order RMQ error for ${orderId}: ${err.message}`);
       throw new OrderServiceUnavailableException();
     }
   }

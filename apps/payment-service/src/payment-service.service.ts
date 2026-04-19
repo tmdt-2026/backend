@@ -1,12 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import axios from 'axios';
 import * as crypto from 'crypto';
 import moment from 'moment';
 import * as qs from 'qs';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaymentPublisher } from './publishers/payment.publisher';
 
 @Injectable()
 export class PaymentService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(PaymentService.name);
+  private readonly orderServiceUrl = process.env.ORDER_SERVICE_URL ?? 'http://order-service:3005';
+  private readonly userServiceUrl = process.env.USER_SERVICE_URL ?? 'http://user-service:3001';
+  private readonly internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN ?? 'internal-secret-token-change-in-production';
+  private readonly frontendBaseUrl = process.env.FRONTEND_URL ?? process.env.APP_URL ?? 'http://localhost:3000';
+
+  constructor(
+    private prisma: PrismaService,
+    private readonly publisher: PaymentPublisher,
+  ) {}
 
   async createPaymentUrl(amount: number, orderId: string, ipAddress: string) {
     const tmnCode = process.env.VNP_TMN_CODE;
@@ -62,7 +73,7 @@ export class PaymentService {
     // FIX: Chuyển về chữ thường để khớp Enum PaymentStatus
     const statusValue = responseCode === '00' ? 'success' : 'failed';
 
-    return await this.prisma.payment.update({
+    const updatedPayment = await this.prisma.payment.update({
       where: { orderId: orderId },
       data: {
         status: statusValue,
@@ -71,6 +82,86 @@ export class PaymentService {
         paidAt: responseCode === '00' ? new Date() : null,
       },
     });
+
+    try {
+      const notificationPayload = await this.buildPaymentNotificationPayload(orderId, updatedPayment, query);
+
+      if (statusValue === 'success') {
+        await this.publisher.publishPaymentSuccess(notificationPayload.success);
+      } else {
+        await this.publisher.publishPaymentFailed(notificationPayload.failed);
+      }
+    } catch (error: any) {
+      this.logger.warn(`Payment notification publish skipped for ${orderId}: ${error.message}`);
+    }
+
+    return updatedPayment;
+  }
+
+  private async buildPaymentNotificationPayload(orderId: string, payment: any, query: any) {
+    const orderResponse = await axios.get(`${this.orderServiceUrl}/orders/${orderId}`);
+    const order = orderResponse.data?.data ?? orderResponse.data;
+    const userProfile = await this.getUserProfile(order.user_id);
+
+    const amount = Number(payment.amount ?? (Number(query['vnp_Amount'] ?? 0) / 100)).toFixed(2);
+    const paidAt = payment.paidAt ? new Date(payment.paidAt).toISOString() : new Date().toISOString();
+
+    return {
+      success: {
+        orderId,
+        orderCode: orderId,
+        userEmail: userProfile.userEmail,
+        userName: userProfile.userName,
+        amount,
+        paymentMethod: payment.paymentMethod,
+        transactionCode: payment.transactionCode ?? query['vnp_TransactionNo'] ?? '',
+        paidAt,
+        receiptUrl: this.buildFrontendUrl(`/orders/${orderId}/receipt`),
+      },
+      failed: {
+        orderId,
+        orderCode: orderId,
+        userEmail: userProfile.userEmail,
+        userName: userProfile.userName,
+        amount,
+        failReason: this.getFailReason(query['vnp_ResponseCode']),
+        retryUrl: this.buildFrontendUrl(`/orders/${orderId}/payment`),
+      },
+    };
+  }
+
+  private async getUserProfile(userId: string): Promise<{ userEmail: string; userName: string }> {
+    try {
+      const response = await axios.get(`${this.userServiceUrl}/internal/users/${userId}`, {
+        headers: {
+          'X-Service-Token': this.internalServiceToken,
+        },
+      });
+
+      const user = response.data?.data ?? response.data;
+
+      return {
+        userEmail: user.email ?? '',
+        userName: user.userName ?? user.fullName ?? 'Khách hàng',
+      };
+    } catch {
+      return {
+        userEmail: '',
+        userName: 'Khách hàng',
+      };
+    }
+  }
+
+  private buildFrontendUrl(path: string): string {
+    return `${this.frontendBaseUrl.replace(/\/$/, '')}${path}`;
+  }
+
+  private getFailReason(responseCode: unknown): string {
+    if (responseCode === '00') {
+      return 'Thanh toán thành công';
+    }
+
+    return `Thanh toán thất bại (${String(responseCode ?? 'unknown')})`;
   }
 
   private sortObject(obj: any) {

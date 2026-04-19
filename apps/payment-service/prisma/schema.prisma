@@ -4,13 +4,13 @@
 // ============================================================
 
 generator client {
-    provider = "prisma-client-js"
-    
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/payment-client"
 }
 
 datasource db {
-    provider = "mysql"
-    url      = env("DATABASE_URL")
+  provider = "mysql"
+  url      = env("PAYMENT_DATABASE_URL")
 }
 
 // ============================================================
@@ -36,7 +36,7 @@ enum PaymentStatus {
 // ============================================================
 model Payment {
     id               String        @id @default(uuid()) @db.Char(36)
-    orderId          String        @map("order_id") @db.Char(36) @unique
+    orderId          String        @unique @map("order_id") @db.Char(36)
     amount           Decimal       @db.Decimal(18, 2)
     paymentMethod    PaymentMethod @map("payment_method")
     status           PaymentStatus @default(pending)

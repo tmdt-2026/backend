@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "prisma.prisma"
+  ],
+  "unwantedRecommendations": [],
+  "notes": [
+    "Project uses Prisma 5.15.0. The Prisma extension v6+ shows false 'url deprecated' errors",
+    "for datasource blocks — these are Prisma 7 warnings and do NOT affect builds.",
+    "If you see those errors, install extension version 5.x via 'Install Another Version'."
+  ]
+}

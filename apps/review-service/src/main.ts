@@ -61,7 +61,7 @@ async function bootstrap() {
 
   logger.log('========================================');
   logger.log('✅ Review Service running');
-  logger.log(`   HTTP  : http://localhost:${port}/api`);
+  logger.log(`   HTTP  : http://localhost:${port}/api/v1`);
   logger.log(`   Queue : ${reviewQueue}`);
   logger.log('========================================');
 }

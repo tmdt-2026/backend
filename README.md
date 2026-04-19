@@ -9,7 +9,9 @@ Các service đang có trong luồng chạy chính:
 - Review Service (port `3002`)
 - Inventory Service (port `3003`)
 - Product Service (port `3004`)
+- Order Service (port `3005`)
 - Promotion Service (port `3006`)
+- Payment Service (port `3007`)
 - Notification Service (port `3009`)
 - Config Service (port `3011`)
 
@@ -21,7 +23,7 @@ Hạ tầng phụ trợ:
 Lưu ý:
 
 - `cart-service` đang bị comment trong [docker-compose.yml](docker-compose.yml).
-- `order-service` và `payment-service` có source code trong [apps](apps) nhưng chưa được khai báo trong [docker-compose.yml](docker-compose.yml).
+- `order-service` và `payment-service` đã có source code trong [apps](apps) và hiện được khai báo trong [docker-compose.yml](docker-compose.yml).
 
 ## Kiến trúc nhanh
 
@@ -32,7 +34,9 @@ Client -> API Gateway (3000)
               +--> Review Service (3002)
               +--> Inventory Service (3003)
               +--> Product Service (3004)
+              +--> Order Service (3005)
               +--> Promotion Service (3006)
+              +--> Payment Service (3007)
               +--> Notification Service (3009)
               +--> Config Service (3011)
 
@@ -114,7 +118,9 @@ docker compose ps --all
 - Review Service: http://localhost:3002/api/v1/health
 - Inventory Service: http://localhost:3003/api/v1/health
 - Product Service: http://localhost:3004/api/v1/health
+- Order Service: http://localhost:3005/orders
 - Promotion Service: http://localhost:3006/api/v1/health
+- Payment Service: http://localhost:3007/api/payments
 - Notification Service: http://localhost:3009/api/v1/health
 - Config Service: http://localhost:3011/api/v1/health
 - RabbitMQ UI: http://localhost:15672
@@ -124,7 +130,7 @@ docker compose ps --all
 Nếu service báo `unhealthy`, kiểm tra log:
 
 ```bash
-docker compose logs -f user-service review-service inventory-service product-service config-service promotion-service notification-service
+docker compose logs -f user-service review-service inventory-service product-service order-service payment-service config-service promotion-service notification-service
 ```
 
 ## Chạy local không dùng Docker
@@ -151,6 +157,8 @@ npx nest start user-service --watch
 npx nest start review-service --watch
 npx nest start inventory-service --watch
 npx nest start product-service --watch
+npx nest start order-service --watch
+npx nest start payment-service --watch
 npx nest start config-service --watch
 npx nest start promotion-service --watch
 npx nest start notification-service --watch
@@ -178,23 +186,27 @@ Trong `package.json` có sẵn:
 
 Gateway nhận request HTTP và proxy đến đúng service.
 
-| Prefix                | Service           |
-| --------------------- | ----------------- |
-| `/api/v1/auth`        | User Service      |
-| `/api/v1/users`       | User Service      |
-| `/api/v1/addresses`   | User Service      |
+| Prefix                        | Service           |
+| ----------------------------- | ----------------- |
+| `/api/v1/auth`                | User Service      |
+| `/api/v1/users`               | User Service      |
+| `/api/v1/addresses`           | User Service      |
 | `/api/v1/users/me/fcm-tokens` | User Service      |
-| `/internal/users`     | User Service      |
-| `/api/v1/products`    | Product Service   |
-| `/internal/products`  | Product Service   |
-| `/api/v1/inventory`   | Inventory Service |
-| `/internal/inventory` | Inventory Service |
-| `/api/v1/reviews`     | Review Service    |
-| `/api/v1/comments`    | Review Service    |
-| `/api/v1/uploads`     | Review Service    |
-| `/internal/reviews`   | Review Service    |
-| `/api/v1/config`      | Config Service    |
-| `/internal/config`    | Config Service    |
+| `/internal/users`             | User Service      |
+| `/api/v1/products`            | Product Service   |
+| `/internal/products`          | Product Service   |
+| `/api/v1/inventory`           | Inventory Service |
+| `/internal/inventory`         | Inventory Service |
+| `/api/v1/reviews`             | Review Service    |
+| `/api/v1/comments`            | Review Service    |
+| `/api/v1/uploads`             | Review Service    |
+| `/internal/reviews`           | Review Service    |
+| `/api/v1/config`              | Config Service    |
+| `/internal/config`            | Config Service    |
+| `/api/v1/orders`              | Order Service     |
+| `/internal/orders`            | Order Service     |
+| `/api/v1/payments`            | Payment Service   |
+| `/internal/payments`          | Payment Service   |
 
 ## Tài liệu API theo service
 
