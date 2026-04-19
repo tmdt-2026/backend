@@ -22,7 +22,8 @@ export class OrderService {
     );
 
     const discount_amount = dto.items.reduce(
-      (sum, item) => sum + Number(item.item_discount || 0),
+      (sum, item) =>
+        sum + Number(item.item_discount || 0) * Number(item.quantity),
       0,
     );
 
@@ -52,53 +53,46 @@ export class OrderService {
           shipping_ward: dto.shipping_ward,
           shipping_street: dto.shipping_street,
           note: dto.note || null,
+          order_details: {
+            create: dto.items.map((item) => ({
+              product_variant_id: item.product_variant_id,
+              product_name: item.product_name,
+              variant_label: item.variant_label || null,
+              quantity: item.quantity,
+              import_price: item.import_price,
+              price: item.price,
+              item_discount: item.item_discount || 0,
+            })),
+          },
         },
-      });
-
-      await tx.orderDetail.createMany({
-        data: dto.items.map((item) => ({
-          order_id: newOrder.id,
-          product_variant_id: item.product_variant_id,
-          product_name: item.product_name,
-          variant_label: item.variant_label || null,
-          quantity: item.quantity,
-          import_price: item.import_price,
-          price: item.price,
-          item_discount: item.item_discount || 0,
-        })),
+        include: {
+          order_details: true,
+        },
       });
 
       return {
         success: true,
-        data: {
-          id: newOrder.id,
-          status: newOrder.status,
-          subtotal_price: newOrder.subtotal_price,
-          discount_amount: newOrder.discount_amount,
-          total_price: newOrder.total_price,
-          total_product: newOrder.total_product,
-        },
+        data: newOrder,
       };
     });
   }
 
   async getAllOrders(status?: string) {
-  const orders = await this.prisma.order.findMany({
-    where: status
-      ? {
-          status: status as any,
-        }
-      : {},
-    orderBy: {
-      created_at: 'desc',
-    },
-  });
+    const orders = await this.prisma.order.findMany({
+      where: status ? { status: status as any } : {},
+      include: {
+        order_details: true,
+      },
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
 
-  return {
-    success: true,
-    data: orders,
-  };
-}
+    return {
+      success: true,
+      data: orders,
+    };
+  }
 
   async getOrderById(id: string) {
     const order = await this.prisma.order.findUnique({
@@ -117,95 +111,73 @@ export class OrderService {
       data: order,
     };
   }
+
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {
-  const order = await this.prisma.order.findUnique({
-    where: { id },
-  });
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+    });
 
-  if (!order) {
-    throw new NotFoundException('Không tìm thấy đơn');
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn');
+    }
+
+    const currentStatus = order.status as string;
+    const nextStatus = dto.status as string;
+
+    const allowedTransitions: Record<string, string[]> = {
+      pending: ['processing', 'cancelled'],
+      processing: ['shipped', 'cancelled'],
+      shipped: ['completed'],
+      completed: [],
+      cancelled: [],
+    };
+
+    if (!allowedTransitions[currentStatus]?.includes(nextStatus)) {
+      throw new BadRequestException(
+        `Không thể chuyển từ ${currentStatus} sang ${nextStatus}`,
+      );
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id },
+      data: {
+        status: nextStatus as any,
+      },
+    });
+
+    return {
+      success: true,
+      data: updated,
+    };
   }
 
-  const currentStatus = order.status as string;
-  const nextStatus = dto.status as string;
-
-  const allowedTransitions: Record<string, string[]> = {
-    pending: ['processing', 'cancelled'],
-    processing: ['shipped', 'cancelled'],
-    shipped: ['completed'],
-    completed: [],
-    cancelled: [],
-  };
-
-  if (!allowedTransitions[currentStatus]) {
-    throw new BadRequestException(
-      `Trạng thái hiện tại không hợp lệ: ${currentStatus}`,
-    );
-  }
-
-  if (!allowedTransitions[currentStatus].includes(nextStatus)) {
-    throw new BadRequestException(
-      `Không thể chuyển trạng thái từ ${currentStatus} sang ${nextStatus}`,
-    );
-  }
-
-  const updated = await this.prisma.order.update({
-    where: { id },
-    data: {
-      status: nextStatus as any
-    },
-  });
-
-  return {
-    success: true,
-    data: updated,
-  };
-}
-  async deleteOrder(id: string) {
-  const order = await this.prisma.order.findUnique({
-    where: { id },
-  });
-
-  if (!order) {
-    throw new NotFoundException('Không tìm thấy đơn');
-  }
-
-  await this.prisma.order.delete({
-    where: { id },
-  });
-
-  return {
-    success: true,
-    message: 'Đã xoá đơn hàng',
-  };
-  }
   async cancelOrder(id: string) {
-  const order = await this.prisma.order.findUnique({
-    where: { id },
-  });
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+    });
 
-  if (!order) {
-    throw new NotFoundException('Không tìm thấy đơn');
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn');
+    }
+
+    if (order.status === 'completed') {
+      throw new BadRequestException('Đơn đã hoàn thành');
+    }
+
+    if (order.status === 'cancelled') {
+      throw new BadRequestException('Đơn đã bị hủy');
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id },
+      data: {
+        status: 'cancelled',
+      },
+    });
+
+    return {
+      success: true,
+      data: updated,
+    };
   }
-
-  if (order.status === 'completed') {
-    throw new BadRequestException('Đơn đã hoàn thành, không thể hủy');
-  }
-
-  if (order.status === 'cancelled') {
-    throw new BadRequestException('Đơn đã bị hủy trước đó');
-  }
-
-  const updated = await this.prisma.order.update({
-    where: { id },
-    data: {
-      status: 'cancelled',
-    },
-  });
-
-  return {
-    success: true,
-    data: updated,
-  };
-}
 }
