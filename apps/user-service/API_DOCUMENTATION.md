@@ -28,22 +28,22 @@
 
 ### Rate Limiting
 
-| Endpoint | Giới hạn |
-|----------|---------|
-| `POST /auth/register` | 5 req/phút/IP |
-| `POST /auth/login` | 10 req/phút/IP |
-| `POST /auth/forgot-password` | 3 req/phút/IP |
-| Tất cả endpoints còn lại | 30 req/phút/IP |
+| Endpoint                     | Giới hạn       |
+| ---------------------------- | -------------- |
+| `POST /auth/register`        | 5 req/phút/IP  |
+| `POST /auth/login`           | 10 req/phút/IP |
+| `POST /auth/forgot-password` | 3 req/phút/IP  |
+| Tất cả endpoints còn lại     | 30 req/phút/IP |
 
 ### Roles
 
-| Role | Mô tả |
-|------|-------|
-| `guest` | Chưa đăng nhập — chỉ gọi được public endpoints |
+| Role       | Mô tả                                                       |
+| ---------- | ----------------------------------------------------------- |
+| `guest`    | Chưa đăng nhập — chỉ gọi được public endpoints              |
 | `customer` | Đã đăng nhập — quản lý profile, địa chỉ, FCM token của mình |
-| `staff` | Xem danh sách user và thông tin chi tiết |
-| `admin` | Toàn quyền: xem, khoá/mở, phân quyền user |
-| `internal` | Service khác — dùng `X-Service-Token` header |
+| `staff`    | Xem danh sách user và thông tin chi tiết                    |
+| `admin`    | Toàn quyền: xem, khoá/mở, phân quyền user                   |
+| `internal` | Service khác — dùng `X-Service-Token` header                |
 
 ---
 
@@ -102,21 +102,21 @@ Giá trị được cấu hình qua biến môi trường `INTERNAL_SERVICE_TOKE
 
 ## 4. Error Codes
 
-| Code | HTTP Status | Mô tả |
-|------|------------|-------|
-| `EMAIL_ALREADY_EXISTS` | 409 | Email đã được đăng ký |
-| `PHONE_ALREADY_EXISTS` | 409 | Số điện thoại đã được đăng ký |
-| `INVALID_CREDENTIALS` | 401 | Email hoặc mật khẩu không đúng |
-| `USER_INACTIVE` | 403 | Tài khoản bị khoá hoặc chưa kích hoạt |
-| `INVALID_TOKEN` | 401 | Token không hợp lệ |
-| `TOKEN_EXPIRED` | 401 | Token đã hết hạn |
-| `TOKEN_REVOKED` | 401 | Token đã bị thu hồi |
-| `INVALID_RESET_TOKEN` | 400 | Token đặt lại mật khẩu không hợp lệ hoặc hết hạn |
-| `INVALID_CURRENT_PASSWORD` | 400 | Mật khẩu hiện tại không đúng |
-| `USER_NOT_FOUND` | 404 | Không tìm thấy người dùng |
-| `CANNOT_DEACTIVATE_SELF` | 400 | Không thể khoá tài khoản của chính mình |
-| `ADDRESS_NOT_FOUND` | 404 | Không tìm thấy địa chỉ |
-| `ADDRESS_LIMIT_EXCEEDED` | 400 | Đã đạt giới hạn 10 địa chỉ |
+| Code                       | HTTP Status | Mô tả                                            |
+| -------------------------- | ----------- | ------------------------------------------------ |
+| `EMAIL_ALREADY_EXISTS`     | 409         | Email đã được đăng ký                            |
+| `PHONE_ALREADY_EXISTS`     | 409         | Số điện thoại đã được đăng ký                    |
+| `INVALID_CREDENTIALS`      | 401         | Email hoặc mật khẩu không đúng                   |
+| `USER_INACTIVE`            | 403         | Tài khoản bị khoá hoặc chưa kích hoạt            |
+| `INVALID_TOKEN`            | 401         | Token không hợp lệ                               |
+| `TOKEN_EXPIRED`            | 401         | Token đã hết hạn                                 |
+| `TOKEN_REVOKED`            | 401         | Token đã bị thu hồi                              |
+| `INVALID_RESET_TOKEN`      | 400         | Token đặt lại mật khẩu không hợp lệ hoặc hết hạn |
+| `INVALID_CURRENT_PASSWORD` | 400         | Mật khẩu hiện tại không đúng                     |
+| `USER_NOT_FOUND`           | 404         | Không tìm thấy người dùng                        |
+| `CANNOT_DEACTIVATE_SELF`   | 400         | Không thể khoá tài khoản của chính mình          |
+| `ADDRESS_NOT_FOUND`        | 404         | Không tìm thấy địa chỉ                           |
+| `ADDRESS_LIMIT_EXCEEDED`   | 400         | Đã đạt giới hạn 10 địa chỉ                       |
 
 ---
 
@@ -142,12 +142,12 @@ Tạo tài khoản mới với role `customer`.
 }
 ```
 
-| Field | Type | Bắt buộc | Mô tả |
-|-------|------|----------|-------|
-| `email` | string | ✅ | Email hợp lệ, dùng để đăng nhập |
-| `password` | string | ✅ | Tối thiểu 8 ký tự, phải có chữ hoa, chữ thường và số |
-| `userName` | string | ✅ | Tên hiển thị |
-| `phoneNumber` | string | ❌ | 10–11 chữ số |
+| Field         | Type   | Bắt buộc | Mô tả                                                |
+| ------------- | ------ | -------- | ---------------------------------------------------- |
+| `email`       | string | ✅       | Email hợp lệ, dùng để đăng nhập                      |
+| `password`    | string | ✅       | Tối thiểu 8 ký tự, phải có chữ hoa, chữ thường và số |
+| `userName`    | string | ✅       | Tên hiển thị                                         |
+| `phoneNumber` | string | ❌       | 10–11 chữ số                                         |
 
 **Response `201`:**
 
@@ -193,11 +193,11 @@ Tạo tài khoản mới với role `customer`.
 }
 ```
 
-| Field | Type | Bắt buộc | Mô tả |
-|-------|------|----------|-------|
-| `email` | string | ✅ | |
-| `password` | string | ✅ | |
-| `deviceId` | string | ❌ | ID thiết bị, dùng để quản lý refresh token theo thiết bị |
+| Field      | Type   | Bắt buộc | Mô tả                                                    |
+| ---------- | ------ | -------- | -------------------------------------------------------- |
+| `email`    | string | ✅       |                                                          |
+| `password` | string | ✅       |                                                          |
+| `deviceId` | string | ❌       | ID thiết bị, dùng để quản lý refresh token theo thiết bị |
 
 **Response `200`:**
 
@@ -338,10 +338,10 @@ Gửi link đặt lại mật khẩu qua email (thông qua Notification Service)
 }
 ```
 
-| Field | Type | Bắt buộc | Mô tả |
-|-------|------|----------|-------|
-| `token` | string | ✅ | Token nhận được trong email |
-| `newPassword` | string | ✅ | Tối thiểu 8 ký tự, có chữ hoa, chữ thường và số |
+| Field         | Type   | Bắt buộc | Mô tả                                           |
+| ------------- | ------ | -------- | ----------------------------------------------- |
+| `token`       | string | ✅       | Token nhận được trong email                     |
+| `newPassword` | string | ✅       | Tối thiểu 8 ký tự, có chữ hoa, chữ thường và số |
 
 **Response `200`:**
 
@@ -463,7 +463,7 @@ Tất cả fields đều optional — chỉ gửi fields muốn thay đổi.
 
 ```json
 {
- "userName": "Nguyen Van B",
+  "userName": "Nguyen Van B",
   "fullName": "Nguyễn Văn B",
   "avatarUrl": "https://cdn.example.com/avatars/new.jpg",
   "dateOfBirth": "1995-08-15",
@@ -472,14 +472,14 @@ Tất cả fields đều optional — chỉ gửi fields muốn thay đổi.
 }
 ```
 
-| Field | Type | Mô tả |
-|-------|------|-------|
-| `userName` | string | Tên đăng nhập hiển thị |
-| `fullName` | string | Họ và tên đầy đủ |
-| `avatarUrl` | string (URL) | Đường dẫn ảnh đại diện |
-| `dateOfBirth` | string (`YYYY-MM-DD`) | Ngày sinh |
-| `gender` | `male` \| `female` \| `other` | Giới tính |
-| `phoneNumber` | string | 10–11 chữ số, phải là duy nhất |
+| Field         | Type                          | Mô tả                          |
+| ------------- | ----------------------------- | ------------------------------ |
+| `userName`    | string                        | Tên đăng nhập hiển thị         |
+| `fullName`    | string                        | Họ và tên đầy đủ               |
+| `avatarUrl`   | string (URL)                  | Đường dẫn ảnh đại diện         |
+| `dateOfBirth` | string (`YYYY-MM-DD`)         | Ngày sinh                      |
+| `gender`      | `male` \| `female` \| `other` | Giới tính                      |
+| `phoneNumber` | string                        | 10–11 chữ số, phải là duy nhất |
 
 **Response `200`:** _(cùng format với GET /users/me)_
 
@@ -496,12 +496,12 @@ Tất cả fields đều optional — chỉ gửi fields muốn thay đổi.
 
 **Query Parameters:**
 
-| Param | Type | Default | Mô tả |
-|-------|------|---------|-------|
-| `search` | string | — | Tìm theo email hoặc userName |
-| `isActive` | boolean | — | Lọc theo trạng thái (true/false) |
-| `page` | number | 1 | Trang hiện tại |
-| `limit` | number | 20 | Số bản ghi mỗi trang (tối đa 100) |
+| Param      | Type    | Default | Mô tả                             |
+| ---------- | ------- | ------- | --------------------------------- |
+| `search`   | string  | —       | Tìm theo email hoặc userName      |
+| `isActive` | boolean | —       | Lọc theo trạng thái (true/false)  |
+| `page`     | number  | 1       | Trang hiện tại                    |
+| `limit`    | number  | 20      | Số bản ghi mỗi trang (tối đa 100) |
 
 **Ví dụ:** `GET /users?search=nguyen&isActive=true&page=1&limit=10`
 
@@ -601,8 +601,8 @@ Thay thế toàn bộ roles của user.
 }
 ```
 
-| Field | Type | Mô tả |
-|-------|------|-------|
+| Field   | Type     | Mô tả                                                             |
+| ------- | -------- | ----------------------------------------------------------------- |
 | `roles` | string[] | Danh sách roles mới. Giá trị hợp lệ: `admin`, `staff`, `customer` |
 
 **Response `200`:** _(thông tin user đầy đủ với roles mới)_
@@ -670,16 +670,16 @@ Tất cả endpoints địa chỉ yêu cầu đăng nhập. Mỗi user tối đa
 }
 ```
 
-| Field | Type | Bắt buộc | Mô tả |
-|-------|------|----------|-------|
-| `label` | string | ❌ | Nhãn địa chỉ (VD: "Nhà", "Công ty") |
-| `fullName` | string | ✅ | Người nhận |
-| `phoneNumber` | string | ✅ | SĐT người nhận (10–11 số) |
-| `province` | string | ✅ | Tỉnh/Thành phố |
-| `district` | string | ✅ | Quận/Huyện |
-| `ward` | string | ✅ | Phường/Xã |
-| `street` | string | ✅ | Số nhà, tên đường |
-| `isDefault` | boolean | ❌ | Đặt làm địa chỉ mặc định |
+| Field         | Type    | Bắt buộc | Mô tả                               |
+| ------------- | ------- | -------- | ----------------------------------- |
+| `label`       | string  | ❌       | Nhãn địa chỉ (VD: "Nhà", "Công ty") |
+| `fullName`    | string  | ✅       | Người nhận                          |
+| `phoneNumber` | string  | ✅       | SĐT người nhận (10–11 số)           |
+| `province`    | string  | ✅       | Tỉnh/Thành phố                      |
+| `district`    | string  | ✅       | Quận/Huyện                          |
+| `ward`        | string  | ✅       | Phường/Xã                           |
+| `street`      | string  | ✅       | Số nhà, tên đường                   |
+| `isDefault`   | boolean | ❌       | Đặt làm địa chỉ mặc định            |
 
 **Response `201`:** _(object địa chỉ vừa tạo)_
 
@@ -775,10 +775,10 @@ Quản lý Firebase Cloud Messaging token để nhận push notification.
 }
 ```
 
-| Field | Type | Bắt buộc | Mô tả |
-|-------|------|----------|-------|
-| `token` | string | ✅ | FCM token lấy từ Firebase SDK |
-| `deviceType` | `android` \| `ios` \| `web` | ✅ | Loại thiết bị |
+| Field        | Type                        | Bắt buộc | Mô tả                         |
+| ------------ | --------------------------- | -------- | ----------------------------- |
+| `token`      | string                      | ✅       | FCM token lấy từ Firebase SDK |
+| `deviceType` | `android` \| `ios` \| `web` | ✅       | Loại thiết bị                 |
 
 **Response `200`:**
 
@@ -832,6 +832,7 @@ Các endpoint này dành cho service khác trong hệ thống gọi đến. Yêu
 Lấy thông tin đầy đủ của một user theo ID. Dùng bởi Order Service, Review Service, v.v.
 
 **Headers:**
+
 ```
 X-Service-Token: internal-secret-token
 ```
@@ -865,6 +866,7 @@ X-Service-Token: internal-secret-token
 Lấy thông tin nhiều users cùng lúc theo danh sách ID. Dùng để enrich dữ liệu (VD: lấy tên người mua trong danh sách đơn hàng).
 
 **Headers:**
+
 ```
 X-Service-Token: internal-secret-token
 ```
@@ -962,7 +964,8 @@ Phát khi user đăng ký thành công. Notification Service dùng event này đ
 {
   "userId": "550e8400-e29b-41d4-a716-446655440000",
   "email": "user@example.com",
-  "fullName": "Nguyễn Văn A"
+  "userName": "Nguyễn Văn A",
+  "loginUrl": "https://iluxury.vn/login"
 }
 ```
 
@@ -970,13 +973,15 @@ Phát khi user đăng ký thành công. Notification Service dùng event này đ
 
 ### 11.2 `user.password_reset`
 
-Phát khi user yêu cầu đặt lại mật khẩu. Notification Service dùng event này để gửi email chứa reset token.
+Phát khi user yêu cầu đặt lại mật khẩu. Notification Service dùng event này để gửi email chứa link reset.
 
 ```json
 {
   "userId": "550e8400-e29b-41d4-a716-446655440000",
   "email": "user@example.com",
-  "resetToken": "uuid-reset-token"
+  "userName": "Nguyễn Văn A",
+  "resetUrl": "https://iluxury.vn/reset-password?token=uuid-reset-token",
+  "expiresIn": "15 phút"
 }
 ```
 
@@ -989,7 +994,8 @@ Phát khi admin khoá tài khoản user.
 ```json
 {
   "userId": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "user@example.com"
+  "email": "user@example.com",
+  "userName": "Nguyễn Văn A"
 }
 ```
 
@@ -1027,15 +1033,15 @@ Phát khi admin khoá tài khoản user.
 
 ## Phụ Lục — Environment Variables
 
-| Biến | Default | Mô tả |
-|------|---------|-------|
-| `PORT` | `3001` | Port HTTP server |
-| `NODE_ENV` | `development` | Môi trường |
-| `DATABASE_URL` | — | MySQL connection string |
-| `RABBITMQ_URL` | `amqp://tmdt:tmdt2026@rabbitmq:5672` | RabbitMQ URL |
-| `JWT_SECRET` | — | **Bắt buộc thay đổi ở production** |
-| `JWT_ACCESS_EXPIRY` | `15m` | Thời hạn access token |
-| `JWT_REFRESH_EXPIRY` | `30d` | Thời hạn refresh token |
-| `BCRYPT_ROUNDS` | `12` | Số rounds bcrypt |
-| `INTERNAL_SERVICE_TOKEN` | — | **Bắt buộc thay đổi ở production** |
-| `CORS_ORIGIN` | `*` | CORS origin |
+| Biến                     | Default                              | Mô tả                              |
+| ------------------------ | ------------------------------------ | ---------------------------------- |
+| `PORT`                   | `3001`                               | Port HTTP server                   |
+| `NODE_ENV`               | `development`                        | Môi trường                         |
+| `DATABASE_URL`           | —                                    | MySQL connection string            |
+| `RABBITMQ_URL`           | `amqp://tmdt:tmdt2026@rabbitmq:5672` | RabbitMQ URL                       |
+| `JWT_SECRET`             | —                                    | **Bắt buộc thay đổi ở production** |
+| `JWT_ACCESS_EXPIRY`      | `15m`                                | Thời hạn access token              |
+| `JWT_REFRESH_EXPIRY`     | `30d`                                | Thời hạn refresh token             |
+| `BCRYPT_ROUNDS`          | `12`                                 | Số rounds bcrypt                   |
+| `INTERNAL_SERVICE_TOKEN` | —                                    | **Bắt buộc thay đổi ở production** |
+| `CORS_ORIGIN`            | `*`                                  | CORS origin                        |

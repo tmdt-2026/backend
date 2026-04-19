@@ -59,8 +59,8 @@ async function bootstrap() {
   const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL ?? 'http://localhost:3004';
   const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL ?? 'http://localhost:3005';
   const INVENTORY_SERVICE_URL = process.env.INVENTORY_SERVICE_URL ?? 'http://localhost:3003';
-  const REVIEW_SERVICE_URL = process.env.REVIEW_SERVICE_URL ?? 'http://localhost:3002';
-  const CONFIG_SERVICE_URL = process.env.CONFIG_SERVICE_URL ?? 'http://localhost:3011';
+  const REVIEW_SERVICE_URL    = process.env.REVIEW_SERVICE_URL    ?? 'http://localhost:3002';
+  const CONFIG_SERVICE_URL    = process.env.CONFIG_SERVICE_URL    ?? 'http://localhost:3011';
   const PROMOTION_SERVICE_URL = process.env.PROMOTION_SERVICE_URL ?? 'http://localhost:3006';
 
   const app = await NestFactory.create(AppModule, { bodyParser: false });
@@ -91,9 +91,9 @@ async function bootstrap() {
   mountProxy(expressApp, '/api/v1/uploads', REVIEW_SERVICE_URL);
   mountProxy(expressApp, '/internal/reviews', REVIEW_SERVICE_URL);
 
-  // CONFIG
-  mountProxy(expressApp, '/api/v1/config', CONFIG_SERVICE_URL);
-  mountProxy(expressApp, '/internal/config', CONFIG_SERVICE_URL);
+  // ── CONFIG SERVICE ────────────────────────────────────────────────────────
+  expressApp.use('/api/v1/config',     makeProxy(CONFIG_SERVICE_URL));
+  expressApp.use('/internal/config',   makeProxy(CONFIG_SERVICE_URL));
 
   // PROMOTION
   mountProxy(expressApp, '/api/v1/promotions', PROMOTION_SERVICE_URL);
@@ -116,6 +116,8 @@ async function bootstrap() {
   logger.log(`   invent  → ${INVENTORY_SERVICE_URL}`);
   logger.log(`   review  → ${REVIEW_SERVICE_URL}`);
   logger.log(`   config  → ${CONFIG_SERVICE_URL}`);
+  logger.log(`   order   → ${ORDER_SERVICE_URL}`);
+  logger.log(`   payment → ${PAYMENT_SERVICE_URL}`);
   logger.log(`   promo   → ${PROMOTION_SERVICE_URL}`);
   logger.log('========================================');
 }

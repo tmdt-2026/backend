@@ -1,15 +1,36 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { OrderPublisher } from './publishers/order.publisher';
+import { ORDER_USER_RABBITMQ_CLIENT } from './publishers/publishers.module';
+
+type OrderDetailSummary = {
+  product_variant_id: string;
+  product_name: string;
+  variant_label?: string | null;
+  quantity: number;
+  import_price: unknown;
+  price: unknown;
+  item_discount?: unknown;
+};
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly frontendBaseUrl = process.env.FRONTEND_URL ?? process.env.APP_URL ?? 'http://localhost:3000';
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly publisher: OrderPublisher,
+    @Inject(ORDER_USER_RABBITMQ_CLIENT) private readonly userClient: ClientProxy,
+  ) {}
 
   async createOrder(dto: CreateOrderDto) {
     if (!dto.items || dto.items.length === 0) {
@@ -34,7 +55,7 @@ export class OrderService {
       0,
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
         data: {
           user_id: dto.user_id,
@@ -72,21 +93,36 @@ export class OrderService {
 
       return {
         success: true,
-        data: newOrder,
+        data: {
+          id: newOrder.id,
+          status: newOrder.status,
+          subtotal_price: newOrder.subtotal_price,
+          discount_amount: newOrder.discount_amount,
+          total_price: newOrder.total_price,
+          total_product: newOrder.total_product,
+        },
       };
     });
+
+    await this.publisher.publishOrderCreated(result.event);
+
+    return {
+      success: true,
+      data: result.data,
+    };
   }
 
   async getAllOrders(status?: string) {
-    const orders = await this.prisma.order.findMany({
-      where: status ? { status: status as any } : {},
-      include: {
-        order_details: true,
-      },
-      orderBy: {
-        created_at: 'desc',
-      },
-    });
+  const orders = await this.prisma.order.findMany({
+    where: status
+      ? {
+          status: status as any,
+        }
+      : {},
+    orderBy: {
+      created_at: 'desc',
+    },
+  });
 
     return {
       success: true,
@@ -97,25 +133,39 @@ export class OrderService {
   async getOrderById(id: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
-      include: {
-        order_details: true,
-      },
+      include: { order_details: true },
     });
 
     if (!order) {
       throw new NotFoundException('Không tìm thấy đơn hàng');
     }
 
+    return { success: true, data: order };
+  }
+
+  /** Dùng bởi RMQ message pattern — trả null thay vì throw khi không tìm thấy */
+  async getOrderByIdForRpc(id: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { order_details: true },
+    });
+    if (!order) return null;
     return {
-      success: true,
-      data: order,
+      id: order.id,
+      userId: order.user_id,
+      status: order.status,
+      items: order.order_details.map((d) => ({
+        productVariantId: d.product_variant_id,
+        productId: d.product_variant_id,
+        productName: d.product_name,
+      })),
     };
   }
 
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {
-    const order = await this.prisma.order.findUnique({
-      where: { id },
-    });
+  const order = await this.prisma.order.findUnique({
+    where: { id },
+  });
 
     if (!order) {
       throw new NotFoundException('Không tìm thấy đơn');
@@ -132,52 +182,75 @@ export class OrderService {
       cancelled: [],
     };
 
-    if (!allowedTransitions[currentStatus]?.includes(nextStatus)) {
-      throw new BadRequestException(
-        `Không thể chuyển từ ${currentStatus} sang ${nextStatus}`,
-      );
-    }
-
-    const updated = await this.prisma.order.update({
-      where: { id },
-      data: {
-        status: nextStatus as any,
-      },
-    });
-
-    return {
-      success: true,
-      data: updated,
-    };
+  if (!allowedTransitions[currentStatus]) {
+    throw new BadRequestException(
+      `Trạng thái hiện tại không hợp lệ: ${currentStatus}`,
+    );
   }
 
+  if (!allowedTransitions[currentStatus].includes(nextStatus)) {
+    throw new BadRequestException(
+      `Không thể chuyển trạng thái từ ${currentStatus} sang ${nextStatus}`,
+    );
+  }
+
+  const updated = await this.prisma.order.update({
+    where: { id },
+    data: {
+      status: nextStatus as any
+    },
+  });
+
+  return {
+    success: true,
+    data: updated,
+  };
+}
+  async deleteOrder(id: string) {
+  const order = await this.prisma.order.findUnique({
+    where: { id },
+  });
+
+  if (!order) {
+    throw new NotFoundException('Không tìm thấy đơn');
+  }
+
+  await this.prisma.order.delete({
+    where: { id },
+  });
+
+  return {
+    success: true,
+    message: 'Đã xoá đơn hàng',
+  };
+  }
   async cancelOrder(id: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id },
-    });
+  const order = await this.prisma.order.findUnique({
+    where: { id },
+  });
 
     if (!order) {
       throw new NotFoundException('Không tìm thấy đơn');
     }
 
-    if (order.status === 'completed') {
-      throw new BadRequestException('Đơn đã hoàn thành');
-    }
-
-    if (order.status === 'cancelled') {
-      throw new BadRequestException('Đơn đã bị hủy');
-    }
-
-    const updated = await this.prisma.order.update({
-      where: { id },
-      data: {
-        status: 'cancelled',
-      },
-    });
-
-    return {
-      success: true,
-      data: updated,
-    };
+  if (order.status === 'completed') {
+    throw new BadRequestException('Đơn đã hoàn thành, không thể hủy');
   }
+
+  if (order.status === 'cancelled') {
+    throw new BadRequestException('Đơn đã bị hủy trước đó');
+  }
+
+  const updated = await this.prisma.order.update({
+    where: { id },
+    data: {
+      status: 'cancelled',
+    },
+  });
+
+  return {
+    success: true,
+    data: updated,
+  };
+}
 }

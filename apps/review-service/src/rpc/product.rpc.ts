@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom, timeout } from 'rxjs';
 import { ProductServiceUnavailableException } from '../common/exceptions/review.exceptions';
+
+export const REVIEW_PRODUCT_RMQ_CLIENT = 'REVIEW_PRODUCT_RMQ_CLIENT';
 
 export interface ProductRpcResponse {
   id: string;
@@ -12,34 +13,22 @@ export interface ProductRpcResponse {
 @Injectable()
 export class ProductRpc {
   private readonly logger = new Logger(ProductRpc.name);
-  private readonly baseUrl: string;
-  private readonly serviceToken: string;
-  private readonly timeout: number;
+  private readonly timeoutMs = parseInt(process.env.RPC_TIMEOUT_MS ?? '3000', 10);
 
   constructor(
-    private readonly httpService: HttpService,
-    private readonly config: ConfigService,
-  ) {
-    this.baseUrl = config.get<string>('rpc.productServiceUrl')!;
-    this.serviceToken = config.get<string>('rpc.serviceToken')!;
-    this.timeout = config.get<number>('rpc.timeoutMs')!;
-  }
+    @Inject(REVIEW_PRODUCT_RMQ_CLIENT) private readonly client: ClientProxy,
+  ) {}
 
   async getProductById(productId: string): Promise<ProductRpcResponse | null> {
     try {
-      const res = await firstValueFrom(
-        this.httpService.get<ProductRpcResponse>(
-          `${this.baseUrl}/api/internal/products/${productId}`,
-          {
-            headers: { 'X-Service-Token': this.serviceToken },
-            timeout: this.timeout,
-          },
-        ),
+      const result = await firstValueFrom(
+        this.client
+          .send<{ success: boolean; data: ProductRpcResponse }>({ cmd: 'product.get-by-id' }, { id: productId })
+          .pipe(timeout(this.timeoutMs)),
       );
-      return res.data;
+      return result?.data ?? null;
     } catch (err: any) {
-      if (err.response?.status === 404) return null;
-      this.logger.error(`Product Service error: ${err.message}`);
+      this.logger.error(`Product RMQ error for ${productId}: ${err.message}`);
       throw new ProductServiceUnavailableException();
     }
   }

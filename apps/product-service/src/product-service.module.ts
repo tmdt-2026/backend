@@ -7,6 +7,7 @@ import { ProductController } from './product-service.controller';
 import { ProductRpcController } from './product.rpc.controller';
 import { ProductService } from './product-service.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { HealthController } from './health/health.controller';
 
 const rootEnvPath = [
   resolve(process.cwd(), '.env'),
@@ -23,7 +24,7 @@ const rootEnvPath = [
     }),
     PrismaModule,
   ],
-  controllers: [ProductController, ProductRpcController],
+  controllers: [ProductController, ProductRpcController, HealthController],
   providers: [ProductService],
   exports: [ProductService],
 })

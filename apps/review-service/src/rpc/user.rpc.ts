@@ -1,48 +1,35 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom, timeout } from 'rxjs';
+
+export const REVIEW_USER_RMQ_CLIENT = 'REVIEW_USER_RMQ_CLIENT';
 
 export interface UserRpcResponse {
   id: string;
   userName: string;
   email: string;
   roles: string[];
-  detail?: {
-    fullName?: string;
-    avatarUrl?: string;
-  };
+  fullName?: string;
   avatarUrl?: string;
 }
 
 @Injectable()
 export class UserRpc {
   private readonly logger = new Logger(UserRpc.name);
-  private readonly baseUrl: string;
-  private readonly serviceToken: string;
-  private readonly timeout: number;
+  private readonly timeoutMs = parseInt(process.env.RPC_TIMEOUT_MS ?? '3000', 10);
 
   constructor(
-    private readonly httpService: HttpService,
-    private readonly config: ConfigService,
-  ) {
-    this.baseUrl = config.get<string>('rpc.userServiceUrl')!;
-    this.serviceToken = config.get<string>('rpc.serviceToken')!;
-    this.timeout = config.get<number>('rpc.timeoutMs')!;
-  }
+    @Inject(REVIEW_USER_RMQ_CLIENT) private readonly client: ClientProxy,
+  ) {}
 
   async getUserById(userId: string): Promise<UserRpcResponse | null> {
     try {
-      const res = await firstValueFrom(
-        this.httpService.get<any>(
-          `${this.baseUrl}/api/internal/users/${userId}`,
-          {
-            headers: { 'X-Service-Token': this.serviceToken },
-            timeout: this.timeout,
-          },
-        ),
+      const user = await firstValueFrom(
+        this.client
+          .send<UserRpcResponse>({ cmd: 'user.get-by-id' }, { id: userId })
+          .pipe(timeout(this.timeoutMs)),
       );
-      return res.data?.data ?? res.data;
+      return user ?? null;
     } catch (err: any) {
       this.logger.warn(`Could not fetch user ${userId}: ${err.message}`);
       return null;

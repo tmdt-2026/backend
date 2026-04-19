@@ -29,7 +29,12 @@
       "Bash(DATABASE_URL=\"mysql://root:root@localhost:3306/db\" npx prisma generate --schema=apps/user-service/prisma/schema.prisma)",
       "Bash(PRODUCT_DATABASE_URL=\"mysql://root:root@localhost:3306/db\" npx prisma generate --schema=apps/product-service/prisma/schema.prisma)",
       "Bash(CONFIG_DATABASE_URL=\"mysql://root:root@localhost:3306/db\" npx prisma generate --schema=apps/config-service/prisma/schema.prisma)",
-      "Read(//c/Projects/backend/**)"
+      "Read(//c/Projects/backend/**)",
+      "Bash(grep -r \"@Public\\\\|@Get.*health\" /c/Projects/backend/apps/*/src/health/)",
+      "Bash(grep -r \"jwt.secret\\\\|JWT_SECRET\\\\|jwt-secret\" /c/Projects/backend/apps/*/src/ --include=\"*.ts\")",
+      "Bash(grep -r \"internal/products\\\\|internal/inventory\\\\|ServiceAuthGuard\" /c/Projects/backend/apps/*/src/ --include=\"*.controller.ts\")",
+      "Bash(xargs grep *)",
+      "Bash(find *)"
     ]
   }
 }
