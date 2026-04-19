@@ -25,7 +25,9 @@
     "paths": {
       "@user-service/*": ["./apps/user-service/src/*"],
       "@inventory-service/*": ["./apps/inventory-service/src/*"],
+      "@installment-service/*": ["./apps/installment-service/src/*"],
       "@tmdt/*": ["./apps/tmdt/src/*"]
+      
     },
     "types": ["node", "jest"]
   },

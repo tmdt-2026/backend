@@ -45,6 +45,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/schedule": "^6.1.1",
+    "@nestjs/swagger": "^11.3.0",
     "@nestjs/throttler": "^6.5.0",
     "@prisma/client": "^5.22.0",
     "@types/multer": "^2.1.0",
@@ -66,6 +67,7 @@
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -98,7 +100,8 @@
     "ts-node": "^10.9.0",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "webpack": "^5.106.2"
   },
   "prisma": {
     "seed": "node dist/apps/user-service/src/prisma/seed.js"

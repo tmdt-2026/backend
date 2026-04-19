@@ -9,6 +9,7 @@
   },
   "monorepo": true,
   "root": "apps/tmdt",
+  "defaultProject": "tmdt",
   "projects": {
     "user-service": {
       "type": "application",
@@ -136,7 +137,9 @@
       "entryFile": "main",
       "sourceRoot": "apps/installment-service/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/installment-service/tsconfig.app.json"
+        "tsConfigPath": "apps/installment-service/tsconfig.app.json",
+        "webpack": true,
+        "webpackConfigPath": "apps/installment-service/webpack.config.js"
       }
     },
     "tmdt": {
