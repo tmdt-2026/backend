@@ -67,14 +67,12 @@ enum PaymentType {
 enum PaymentMethod {
   cod
   vnpay
-  momo
-  bank_transfer
 }
 
 enum OrderStatus {
   pending
-  processing
-  shipped
-  completed
+  confirmed
+  shipping
+  delivered
   cancelled
 }

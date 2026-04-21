@@ -1,12 +1,18 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
-import { OrderPublisher } from './publishers/order.publisher';
+import {
+  OrderPublisher,
+  ORDER_PRODUCT_RABBITMQ_CLIENT,
+} from './publishers/order.publisher';
 
 type OrderDetailSummary = {
   product_variant_id: string;
@@ -18,6 +24,14 @@ type OrderDetailSummary = {
   item_discount?: unknown;
 };
 
+type ProductVariantRpcResult = {
+  success?: boolean;
+  data?: {
+    isActive?: boolean;
+    stockQuantity?: number;
+  };
+};
+
 @Injectable()
 export class OrderService {
   private readonly frontendBaseUrl = process.env.FRONTEND_URL ?? process.env.APP_URL ?? 'http://localhost:3000';
@@ -25,12 +39,20 @@ export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly publisher: OrderPublisher,
+    @Inject(ORDER_PRODUCT_RABBITMQ_CLIENT)
+    private readonly productClient: ClientProxy,
   ) {}
+
+  async createInvoice(dto: CreateOrderDto) {
+    return this.createOrder(dto);
+  }
 
   async createOrder(dto: CreateOrderDto) {
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Đơn hàng phải có ít nhất 1 sản phẩm');
     }
+
+    await this.validateOrderVariants(dto);
 
     const subtotal_price = dto.items.reduce(
       (sum, item) => sum + Number(item.price) * Number(item.quantity),
@@ -89,11 +111,21 @@ export class OrderService {
       return {
         data: {
           id: newOrder.id,
+          // order_code may not exist in schema yet; fall back to id prefix
+          order_code: (newOrder as any).order_code ?? `ORD-${newOrder.id.slice(0, 8).toUpperCase()}`,
           status: newOrder.status,
-          subtotal_price: newOrder.subtotal_price,
-          discount_amount: newOrder.discount_amount,
-          total_price: newOrder.total_price,
+          payment_method: newOrder.payment_method,
+          payment_type: newOrder.payment_type,
+          // Canonical aliases expected by frontend and API docs
+          total_amount: Number(newOrder.subtotal_price),
+          discount_amount: Number(newOrder.discount_amount),
+          shipping_fee: 0,
+          final_amount: Number(newOrder.total_price),
+          // Keep raw DB fields for internal consumers
+          subtotal_price: Number(newOrder.subtotal_price),
+          total_price: Number(newOrder.total_price),
           total_product: newOrder.total_product,
+          createdAt: newOrder.created_at.toISOString(),
         },
         event: {
           orderId: newOrder.id,
@@ -116,22 +148,87 @@ export class OrderService {
     };
   }
 
-  async getAllOrders(status?: string) {
-  const orders = await this.prisma.order.findMany({
-    where: status
-      ? {
-          status: status as any,
-        }
-      : {},
-    orderBy: {
-      created_at: 'desc',
-    },
-  });
+  private async validateOrderVariants(dto: CreateOrderDto) {
+    for (const item of dto.items) {
+      let rpcResponse: ProductVariantRpcResult;
+      try {
+        rpcResponse = await firstValueFrom(
+          this.productClient.send<ProductVariantRpcResult>(
+            { cmd: 'product.get-variant' },
+            { variantId: item.product_variant_id },
+          ),
+        );
+      } catch {
+        throw new BadRequestException(
+          `Khong tim thay bien the ${item.product_variant_id}`,
+        );
+      }
 
-    return {
-      success: true,
-      data: orders,
-    };
+      if (!rpcResponse?.success || !rpcResponse.data) {
+        throw new BadRequestException(
+          `Khong tim thay bien the ${item.product_variant_id}`,
+        );
+      }
+
+      if (!rpcResponse.data.isActive) {
+        throw new BadRequestException(
+          `Bien the ${item.product_variant_id} da ngung kinh doanh`,
+        );
+      }
+
+      if (
+        typeof rpcResponse.data.stockQuantity === 'number' &&
+        item.quantity > rpcResponse.data.stockQuantity
+      ) {
+        throw new BadRequestException(
+          `So luong dat cua bien the ${item.product_variant_id} vuot ton kho`,
+        );
+      }
+    }
+  }
+
+  async getAllOrders(status?: string) {
+    const orders = await this.prisma.order.findMany({
+      where: status ? { status: status as any } : {},
+      include: { order_details: true },
+      orderBy: { created_at: 'desc' },
+    });
+
+    return { success: true, data: orders };
+  }
+
+  async getMyOrders(userId: string, status?: string) {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        user_id: userId,
+        ...(status ? { status: status as any } : {}),
+      },
+      include: { order_details: true },
+      orderBy: { created_at: 'desc' },
+    });
+
+    const mapped = orders.map((o) => ({
+      id: o.id,
+      order_code: (o as any).order_code ?? `ORD-${o.id.slice(0, 8).toUpperCase()}`,
+      status: o.status,
+      payment_method: o.payment_method,
+      payment_type: o.payment_type,
+      total_amount: Number(o.subtotal_price),
+      discount_amount: Number(o.discount_amount),
+      shipping_fee: 0,
+      final_amount: Number(o.total_price),
+      createdAt: o.created_at.toISOString(),
+      items: o.order_details.map((d) => ({
+        product_variant_id: d.product_variant_id,
+        product_name: d.product_name,
+        variant_label: d.variant_label,
+        quantity: d.quantity,
+        price: Number(d.price),
+        item_discount: Number((d as any).item_discount ?? 0),
+      })),
+    }));
+
+    return { success: true, data: mapped };
   }
 
   async getOrderById(id: string) {
@@ -145,6 +242,10 @@ export class OrderService {
     }
 
     return { success: true, data: order };
+  }
+
+  async getInvoiceById(id: string) {
+    return this.getOrderById(id);
   }
 
   /** Dùng bởi RMQ message pattern — trả null thay vì throw khi không tìm thấy */
@@ -179,10 +280,10 @@ export class OrderService {
     const nextStatus = dto.status as string;
 
     const allowedTransitions: Record<string, string[]> = {
-      pending: ['processing', 'cancelled'],
-      processing: ['shipped', 'cancelled'],
-      shipped: ['completed'],
-      completed: [],
+      pending:   ['confirmed', 'cancelled'],
+      confirmed: ['shipping', 'cancelled'],
+      shipping:  ['delivered'],
+      delivered: [],
       cancelled: [],
     };
 

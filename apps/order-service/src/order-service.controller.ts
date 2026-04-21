@@ -28,11 +28,36 @@ export class OrderServiceController {
     return this.orderService.createOrder(dto);
   }
 
+  /** Tạo hóa đơn theo sản phẩm + biến thể mong muốn */
+  @Post('invoices')
+  @Roles('customer', 'staff', 'admin')
+  createInvoice(
+    @Body() dto: CreateOrderDto,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.orderService.createInvoice(dto);
+  }
+
   /** Xem danh sách đơn — chỉ staff/admin */
   @Get()
   @Roles('admin', 'staff')
   getAllOrders(@Query('status') status?: string) {
     return this.orderService.getAllOrders(status);
+  }
+
+  /** Đơn hàng của khách đang đăng nhập — customer/staff/admin.
+   *  Must be declared before /:id so NestJS does not treat "my-orders" as an id param. */
+  @Get('my-orders')
+  @Roles('customer', 'staff', 'admin')
+  getMyOrders(@CurrentUser() user: UserPayload, @Query('status') status?: string) {
+    return this.orderService.getMyOrders(user.sub, status);
+  }
+
+  /** Xem hóa đơn theo mã */
+  @Get('invoices/:id')
+  @Roles('customer', 'staff', 'admin')
+  getInvoiceById(@Param('id') id: string) {
+    return this.orderService.getInvoiceById(id);
   }
 
   /** Xem chi tiết đơn — customer/staff/admin */

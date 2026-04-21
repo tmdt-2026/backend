@@ -1,16 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import moment from 'moment';
 import * as qs from 'qs';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentPublisher } from './publishers/payment.publisher';
+import { CreatePaymentDto } from '../dto/create-payment.dto';
 
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
-  private readonly orderServiceUrl = process.env.ORDER_SERVICE_URL ?? 'http://order-service:3005';
-  private readonly userServiceUrl = process.env.USER_SERVICE_URL ?? 'http://user-service:3001';
+  // Internal URLs must include the /api/v1 global prefix set in each service's main.ts
+  private readonly orderServiceUrl = `${process.env.ORDER_SERVICE_URL ?? 'http://order-service:3005'}/api/v1`;
+  private readonly userServiceUrl = `${process.env.USER_SERVICE_URL ?? 'http://user-service:3001'}/api/v1`;
   private readonly internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN ?? 'internal-secret-token-change-in-production';
   private readonly frontendBaseUrl = process.env.FRONTEND_URL ?? process.env.APP_URL ?? 'http://localhost:3000';
 
@@ -19,22 +21,23 @@ export class PaymentService {
     private readonly publisher: PaymentPublisher,
   ) {}
 
-  async createPaymentUrl(amount: number, orderId: string, ipAddress: string) {
+  async createPaymentUrl(dto: CreatePaymentDto, ipAddress: string) {
+    const { amount, orderId, paymentMethod, description, returnUrl: clientReturnUrl } = dto;
+
     const tmnCode = process.env.VNP_TMN_CODE;
     const secretKey = process.env.VNP_HASH_SECRET;
     let vnpUrl = process.env.VNP_URL;
-    const returnUrl = process.env.VNP_RETURN_URL;
+    const returnUrl = clientReturnUrl || process.env.VNP_RETURN_URL;
 
     const createDate = moment().format('YYYYMMDDHHmmss');
+    const now = new Date();
 
-    // FIX: Đảm bảo trường trong DB khớp (order_id hay orderId)
-    // Dựa trên lỗi trước, tôi dùng 'order_id'. Nếu schema bạn dùng 'orderId', hãy sửa lại chữ này.
-    await this.prisma.payment.create({
+    const payment = await this.prisma.payment.create({
       data: {
-        orderId: orderId, // Đảm bảo ID gửi từ HTML đủ 36 ký tự hoặc sửa Schema thành VarChar(255)
-        amount: amount,
-        paymentMethod: 'vnpay', // Phải khớp với Enum PaymentMethod trong Schema
-        status: 'pending', // Phải khớp với Enum PaymentStatus
+        orderId,
+        amount,
+        paymentMethod: paymentMethod ?? 'vnpay',
+        status: 'pending',
       },
     });
 
@@ -45,9 +48,9 @@ export class PaymentService {
     vnp_Params['vnp_Locale'] = 'vn';
     vnp_Params['vnp_CurrCode'] = 'VND';
     vnp_Params['vnp_TxnRef'] = orderId;
-    vnp_Params['vnp_OrderInfo'] = 'Thanh toan don hang:' + orderId;
+    vnp_Params['vnp_OrderInfo'] = description || ('Thanh toan don hang:' + orderId);
     vnp_Params['vnp_OrderType'] = 'other';
-    vnp_Params['vnp_Amount'] = amount * 100; // VNPAY đơn vị là đồng * 100
+    vnp_Params['vnp_Amount'] = amount * 100;
     vnp_Params['vnp_ReturnUrl'] = returnUrl;
     vnp_Params['vnp_IpAddr'] = ipAddress;
     vnp_Params['vnp_CreateDate'] = createDate;
@@ -62,7 +65,42 @@ export class PaymentService {
     vnp_Params['vnp_SecureHash'] = signed;
     vnpUrl += '?' + qs.stringify(vnp_Params, { encode: false });
 
-    return vnpUrl;
+    // Response shape matches API docs: paymentUrl (not url)
+    return {
+      paymentUrl: vnpUrl,
+      transactionId: payment.id,
+      orderId,
+      amount,
+      paymentMethod: payment.paymentMethod,
+      status: 'pending',
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 15 * 60 * 1000).toISOString(),
+    };
+  }
+
+  async getTransaction(transactionId: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: transactionId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException({
+        code: 'PAYMENT_NOT_FOUND',
+        message: 'Không tìm thấy giao dịch thanh toán.',
+      });
+    }
+
+    return {
+      id: payment.id,
+      orderId: payment.orderId,
+      amount: payment.amount,
+      paymentMethod: payment.paymentMethod,
+      status: payment.status,
+      transactionCode: (payment as any).transactionCode ?? null,
+      paidAt: (payment as any).paidAt ?? null,
+      createdAt: (payment as any).createdAt,
+      updatedAt: (payment as any).updatedAt,
+    };
   }
 
   async updatePaymentStatus(query: any) {
@@ -99,7 +137,9 @@ export class PaymentService {
   }
 
   private async buildPaymentNotificationPayload(orderId: string, payment: any, query: any) {
-    const orderResponse = await axios.get(`${this.orderServiceUrl}/orders/${orderId}`);
+    const orderResponse = await axios.get(`${this.orderServiceUrl}/orders/${orderId}`, {
+      headers: { 'X-Service-Token': this.internalServiceToken },
+    });
     const order = orderResponse.data?.data ?? orderResponse.data;
     const userProfile = await this.getUserProfile(order.user_id);
 

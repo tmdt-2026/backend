@@ -3,6 +3,7 @@ import { ClientProxy } from '@nestjs/microservices';
 
 export const ORDER_NOTIFICATION_RABBITMQ_CLIENT = 'ORDER_NOTIFICATION_RABBITMQ_CLIENT';
 export const ORDER_INVENTORY_RABBITMQ_CLIENT = 'ORDER_INVENTORY_RABBITMQ_CLIENT';
+export const ORDER_PRODUCT_RABBITMQ_CLIENT = 'ORDER_PRODUCT_RABBITMQ_CLIENT';
 
 @Injectable()
 export class OrderPublisher {

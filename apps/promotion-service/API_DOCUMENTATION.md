@@ -1,92 +1,54 @@
-# Promotion Service — Tài Liệu API
+# Promotion Service - API Documentation
 
-> Service: Promotion Service  
-> Base URL: `http://localhost:3006/api/v1`  
-> Health: `http://localhost:3006/api/v1/health`  
-> RMQ Queue: `promotion_queue`  
+> Service: Promotion Service
+> Base URL: `http://localhost:3006/api/v1`
 > Content-Type: `application/json`
+> Transport: HTTP + RabbitMQ
 
-## Tổng quan
+## Tong quan
 
-Promotion Service quản lý voucher/khuyến mãi và tính toán giảm giá cho đơn hàng.
+Promotion Service quan ly voucher/khuyen mai va tinh giam gia cho don hang.
 
-- API trả JSON trực tiếp từ controller/service.
-- Có validate request bằng class-validator.
-- Không yêu cầu Bearer token trong code hiện tại.
+## Xac thuc
 
-## RabbitMQ RPC
+Service ap global JWT guard va roles guard.
 
-Promotion Service đã bật transport RMQ và hỗ trợ các pattern sau:
+- Public: `GET /health`, `GET /promotions`, `GET /promotions/:id`
+- Admin: `POST /promotions`, `PATCH /promotions/:id`, `DELETE /promotions/:id`
+- Customer/Staff/Admin: `POST /promotions/apply`
 
-| Pattern                             | Payload                         | Mô tả                          |
-| ----------------------------------- | ------------------------------- | ------------------------------ |
-| `{ cmd: 'ping' }`                   | `any`                           | Kiểm tra trạng thái service    |
-| `{ cmd: 'promotion.apply' }`        | `{ code, userId, orderAmount }` | Tính giảm giá từ voucher       |
-| `{ cmd: 'promotion.find-by-code' }` | `{ code }`                      | Tra cứu voucher active theo mã |
+## Health
+
+| Method | Path      | Auth   | Mo ta                                         |
+| ------ | --------- | ------ | --------------------------------------------- |
+| `GET`  | `/health` | Public | Kiem tra service va ket noi database.         |
 
 ## HTTP API
 
-| Method   | Path                | Auth   | Mô tả                                           |
-| -------- | ------------------- | ------ | ----------------------------------------------- |
-| `GET`    | `/health`           | Public | Kiểm tra trạng thái service và kết nối database |
-| `POST`   | `/promotions`       | Public | Tạo voucher mới                                 |
-| `GET`    | `/promotions`       | Public | Danh sách voucher, hỗ trợ lọc `isActive`        |
-| `GET`    | `/promotions/:id`   | Public | Lấy chi tiết voucher theo id                    |
-| `PATCH`  | `/promotions/:id`   | Public | Cập nhật voucher                                |
-| `DELETE` | `/promotions/:id`   | Public | Xoá voucher                                     |
-| `POST`   | `/promotions/apply` | Public | Tính giảm giá theo mã voucher                   |
+| Method   | Path                | Auth                          | Mo ta                                |
+| -------- | ------------------- | ----------------------------- | ------------------------------------ |
+| `POST`   | `/promotions`       | Bearer (`admin`)              | Tao voucher moi.                     |
+| `GET`    | `/promotions`       | Public                        | Danh sach voucher, ho tro `isActive` |
+| `GET`    | `/promotions/:id`   | Public                        | Chi tiet voucher theo id.            |
+| `PATCH`  | `/promotions/:id`   | Bearer (`admin`)              | Cap nhat voucher.                    |
+| `DELETE` | `/promotions/:id`   | Bearer (`admin`)              | Xoa voucher.                         |
+| `POST`   | `/promotions/apply` | Bearer (`customer`,`staff`,`admin`) | Ap dung voucher cho don hang.  |
 
-## Mô hình dữ liệu chính
+### Query params
 
-### DiscountType
+`GET /promotions`
 
-- `PERCENTAGE`: Giảm theo phần trăm.
-- `FIXED_AMOUNT`: Giảm số tiền cố định.
+- `isActive=true|false`
 
-### Promotion
-
-Các trường quan trọng:
-
-- `id`: UUID
-- `code`: mã voucher (duy nhất)
-- `name`: tên voucher
-- `description`: mô tả
-- `discountType`: `PERCENTAGE` hoặc `FIXED_AMOUNT`
-- `discountValue`: giá trị giảm
-- `maxDiscount`: mức trần giảm giá (thường dùng cho `%`)
-- `minOrderValue`: giá trị đơn tối thiểu
-- `startDate`, `endDate`: thời gian hiệu lực
-- `usageLimit`, `perUserLimit`: giới hạn sử dụng
-- `isActive`: trạng thái hoạt động
-
-## Chi tiết endpoint
-
-### 1) Health check
-
-`GET /health`
-
-Response mẫu khi OK:
-
-```json
-{
-  "status": "ok",
-  "service": "promotion-service",
-  "database": "connected",
-  "timestamp": "2026-04-16T03:20:00.000Z"
-}
-```
-
-### 2) Tạo voucher
+### Body mau
 
 `POST /promotions`
-
-Request body:
 
 ```json
 {
   "code": "SPRING2026",
-  "name": "Khuyến mãi mùa xuân",
-  "description": "Giảm 10% tối đa 100000",
+  "name": "Khuyen mai mua xuan",
+  "description": "Giam 10% toi da 100000",
   "discountType": "PERCENTAGE",
   "discountValue": 10,
   "maxDiscount": 100000,
@@ -99,79 +61,7 @@ Request body:
 }
 ```
 
-Response mẫu:
-
-```json
-{
-  "id": "8b54d1ef-a120-4aef-b3a7-8a2ea29e1783",
-  "code": "SPRING2026",
-  "name": "Khuyến mãi mùa xuân",
-  "description": "Giảm 10% tối đa 100000",
-  "discountType": "PERCENTAGE",
-  "discountValue": "10.00",
-  "maxDiscount": "100000.00",
-  "minOrderValue": "500000.00",
-  "startDate": "2026-04-01T00:00:00.000Z",
-  "endDate": "2026-04-30T23:59:59.000Z",
-  "usageLimit": 1000,
-  "perUserLimit": 1,
-  "isActive": true,
-  "createdAt": "2026-04-16T03:20:00.000Z",
-  "updatedAt": "2026-04-16T03:20:00.000Z"
-}
-```
-
-### 3) Lấy danh sách voucher
-
-`GET /promotions`
-
-Query hỗ trợ:
-
-- `isActive=true|false`
-
-Ví dụ:
-
-- `GET /promotions`
-- `GET /promotions?isActive=true`
-
-### 4) Lấy chi tiết voucher
-
-`GET /promotions/:id`
-
-Ví dụ:
-
-- `GET /promotions/8b54d1ef-a120-4aef-b3a7-8a2ea29e1783`
-
-### 5) Cập nhật voucher
-
-`PATCH /promotions/:id`
-
-Chỉ gửi các trường cần đổi.
-
-Request body ví dụ:
-
-```json
-{
-  "name": "Khuyến mãi tháng 4",
-  "discountValue": 12,
-  "maxDiscount": 120000,
-  "isActive": true
-}
-```
-
-### 6) Xoá voucher
-
-`DELETE /promotions/:id`
-
-Ví dụ:
-
-- `DELETE /promotions/8b54d1ef-a120-4aef-b3a7-8a2ea29e1783`
-
-### 7) Áp dụng voucher
-
 `POST /promotions/apply`
-
-Request body:
 
 ```json
 {
@@ -181,13 +71,7 @@ Request body:
 }
 ```
 
-Logic tính giảm:
-
-- Nếu `discountType = PERCENTAGE`: giảm theo `%` của `orderAmount`.
-- Nếu có `maxDiscount`: số tiền giảm không vượt quá `maxDiscount`.
-- Nếu `discountType = FIXED_AMOUNT`: giảm đúng `discountValue`.
-
-Response mẫu:
+Response mau:
 
 ```json
 {
@@ -198,51 +82,17 @@ Response mẫu:
 }
 ```
 
-## Lỗi thường gặp
+## RabbitMQ RPC
 
-- `400 Bad Request`
-  - `Mã voucher đã tồn tại`
-  - `Voucher không tồn tại hoặc đã hết hạn`
-  - `Voucher ngoài thời gian sử dụng`
-  - `Đơn hàng tối thiểu ...`
-  - Lỗi validate DTO (thiếu field, sai kiểu dữ liệu)
-- `404 Not Found`
-  - `Không tìm thấy voucher`
+| Pattern                             | Payload                         | Mo ta                          |
+| ----------------------------------- | ------------------------------- | ------------------------------ |
+| `{ cmd: 'ping' }`                   | `any`                           | Kiem tra trang thai service.   |
+| `{ cmd: 'promotion.apply' }`        | `{ code, userId, orderAmount }` | Tinh giam gia voucher.         |
+| `{ cmd: 'promotion.find-by-code' }` | `{ code }`                      | Tra cuu voucher active theo ma.|
 
-## Ví dụ cURL
+## Loi thuong gap
 
-Tạo voucher:
-
-```bash
-curl --location 'http://localhost:3006/api/v1/promotions' \
---header 'Content-Type: application/json' \
---data '{
-  "code": "SPRING2026",
-  "name": "Khuyến mãi mùa xuân",
-  "discountType": "PERCENTAGE",
-  "discountValue": 10,
-  "maxDiscount": 100000,
-  "minOrderValue": 500000,
-  "startDate": "2026-04-01T00:00:00.000Z",
-  "endDate": "2026-04-30T23:59:59.000Z",
-  "isActive": true
-}'
-```
-
-Apply voucher:
-
-```bash
-curl --location 'http://localhost:3006/api/v1/promotions/apply' \
---header 'Content-Type: application/json' \
---data '{
-  "code": "SPRING2026",
-  "userId": "a245bb75-1111-4f50-88ee-02f7c5489f0d",
-  "orderAmount": 1200000
-}'
-```
-
-## Ghi chú kỹ thuật
-
-- Trong code hiện tại, apply voucher chỉ tính toán giảm giá và trả kết quả, chưa ghi nhận usage vào bảng `PROMOTION_USAGES`.
-- Các trường `usageLimit` và `perUserLimit` hiện chưa được enforce trong luồng apply.
-- Query `isActive` đang đọc trực tiếp từ query string; nếu cần chặt chẽ hơn nên parse boolean rõ ràng ở controller/service.
+- `400 Bad Request`: ma voucher ton tai, voucher het han, khong dat dieu kien don toi thieu, loi validate DTO.
+- `401 Unauthorized`: thieu/sai JWT o endpoint can auth.
+- `403 Forbidden`: token hop le nhung khong dung role.
+- `404 Not Found`: khong tim thay voucher.

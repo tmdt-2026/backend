@@ -16,11 +16,9 @@ datasource db {
 // ============================================================
 // ENUMS
 // ============================================================
+// Only VNPay is handled by this service. COD orders never create a Payment record.
 enum PaymentMethod {
-    cod
     vnpay
-    momo
-    bank_transfer
 }
 
 enum PaymentStatus {

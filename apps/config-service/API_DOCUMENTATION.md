@@ -1,32 +1,47 @@
-# Config Service — Tài Liệu API
+# Config Service - API Documentation
 
 > Service: Config Service
 > Base URL: `http://localhost:3011/api/v1`
-> Transport: HTTP + RabbitMQ
 > Content-Type: `application/json`
+> Transport: HTTP + RabbitMQ
 
-## Tổng quan
+## Tong quan
 
-Config Service quản lý settings và banners dùng chung cho toàn hệ thống. Một phần API public, phần còn lại dành cho admin/staff hoặc service nội bộ. Response HTTP được bọc theo format `success/data`.
+Config Service quan ly settings va banners dung chung cho toan he thong.
 
-## Xác thực
+- Public endpoints: lay settings public, lay banners active, track click banner, health check.
+- Auth endpoints: can JWT Bearer token.
+- Internal endpoints: can header `X-Service-Token`.
 
-- `GET /config/settings` và `GET /config/banners` là public.
-- Các route admin/staff cần JWT Bearer token.
-- Các route `/internal/*` cần header `X-Service-Token` khớp `INTERNAL_SERVICE_TOKEN`.
+## Xac thuc
+
+- JWT Bearer: `Authorization: Bearer <token>`
+- Internal service token: `X-Service-Token: <INTERNAL_SERVICE_TOKEN>`
+
+## Health
+
+| Method | Path      | Auth   | Mo ta         |
+| ------ | --------- | ------ | ------------- |
+| `GET`  | `/health` | Public | Health check. |
 
 ## Settings API
 
-| Method   | Path                            | Auth                  | Mô tả                                   |
-| -------- | ------------------------------- | --------------------- | --------------------------------------- | ----------------------------- |
-| `GET`    | `/config/settings`              | Public                | Trả settings public ở dạng object phẳng |
-| `GET`    | `/config/settings/group/:group` | Bearer + roles `admin | staff`                                  | Danh sách settings theo group |
-| `GET`    | `/config/settings/:key`         | Bearer                | Lấy 1 setting theo key                  |
-| `POST`   | `/config/settings`              | Bearer + role `admin` | Tạo setting                             |
-| `PUT`    | `/config/settings/:key`         | Bearer + role `admin` | Cập nhật setting                        |
-| `DELETE` | `/config/settings/:key`         | Bearer + role `admin` | Xoá setting                             |
+| Method   | Path                            | Auth                      | Mo ta                                  |
+| -------- | ------------------------------- | ------------------------- | -------------------------------------- |
+| `GET`    | `/config/settings`              | Public                    | Tra settings public dang object phang. |
+| `GET`    | `/config/settings/group/:group` | Bearer (`admin`, `staff`) | Lay danh sach settings theo group.     |
+| `GET`    | `/config/settings/:key`         | Bearer                    | Lay 1 setting theo key.                |
+| `POST`   | `/config/settings`              | Bearer (`admin`)          | Tao setting moi.                       |
+| `PUT`    | `/config/settings/:key`         | Bearer (`admin`)          | Cap nhat setting.                      |
+| `DELETE` | `/config/settings/:key`         | Bearer (`admin`)          | Xoa setting.                           |
 
-### Body quan trọng
+### Query params
+
+- `GET /config/settings/group/:group?includePrivate=true|false`
+- Mac dinh `includePrivate=false`.
+- Chi `admin` moi duoc lay private settings.
+
+### Body mau
 
 `POST /config/settings`
 
@@ -36,7 +51,7 @@ Config Service quản lý settings và banners dùng chung cho toàn hệ thốn
   "value": "TMDT Shop",
   "type": "string",
   "group": "general",
-  "description": "Tên hiển thị của hệ thống",
+  "description": "Ten hien thi he thong",
   "isPublic": true
 }
 ```
@@ -47,36 +62,36 @@ Config Service quản lý settings và banners dùng chung cho toàn hệ thốn
 {
   "value": "false",
   "settingType": "boolean",
-  "description": "Bật/tắt chế độ bảo trì",
+  "description": "Bat/tat bao tri",
   "isPublic": true
 }
 ```
 
-`GET /config/settings/group/:group?includePrivate=true`
-
-- `includePrivate=false` là mặc định.
-- Chỉ admin mới có thể lấy private settings của group.
-
 ## Banners API
 
-| Method   | Path                              | Auth                  | Mô tả                         |
-| -------- | --------------------------------- | --------------------- | ----------------------------- | ------------------------- |
-| `GET`    | `/config/banners`                 | Public                | Banner active theo `position` |
-| `GET`    | `/config/banners/all`             | Bearer + roles `admin | staff`                        | Danh sách banner quản trị |
-| `POST`   | `/config/banners`                 | Bearer + role `admin` | Tạo banner                    |
-| `PATCH`  | `/config/banners/reorder`         | Bearer + role `admin` | Sắp xếp lại thứ tự banner     |
-| `PUT`    | `/config/banners/:id`             | Bearer + role `admin` | Cập nhật banner               |
-| `DELETE` | `/config/banners/:id`             | Bearer + role `admin` | Xoá banner                    |
-| `PATCH`  | `/config/banners/:id/toggle`      | Bearer + role `admin` | Bật/tắt banner                |
-| `POST`   | `/config/banners/:id/track-click` | Public                | Tăng clickCount               |
+| Method   | Path                              | Auth                      | Mo ta                                  |
+| -------- | --------------------------------- | ------------------------- | -------------------------------------- |
+| `GET`    | `/config/banners`                 | Public                    | Lay banners active, filter `position`. |
+| `GET`    | `/config/banners/all`             | Bearer (`admin`, `staff`) | Danh sach banners cho quan tri.        |
+| `POST`   | `/config/banners`                 | Bearer (`admin`)          | Tao banner moi.                        |
+| `PATCH`  | `/config/banners/reorder`         | Bearer (`admin`)          | Sap xep thu tu banner theo position.   |
+| `PUT`    | `/config/banners/:id`             | Bearer (`admin`)          | Cap nhat banner.                       |
+| `DELETE` | `/config/banners/:id`             | Bearer (`admin`)          | Xoa banner.                            |
+| `PATCH`  | `/config/banners/:id/toggle`      | Bearer (`admin`)          | Bat/tat banner (`isActive`).           |
+| `POST`   | `/config/banners/:id/track-click` | Public                    | Tang clickCount cho banner.            |
 
-### Body quan trọng
+### Query params
+
+- `GET /config/banners?position=home_main`
+- `GET /config/banners/all?position=...&isActive=true|false&page=1&limit=20`
+
+### Body mau
 
 `POST /config/banners`
 
 ```json
 {
-  "title": "Khuyến mãi mùa hè",
+  "title": "Khuyen mai mua he",
   "imageUrl": "https://cdn.example.com/banner.jpg",
   "mobileImageUrl": "https://cdn.example.com/banner-mobile.jpg",
   "targetUrl": "/products",
@@ -98,20 +113,28 @@ Config Service quản lý settings và banners dùng chung cho toàn hệ thốn
 }
 ```
 
+`PATCH /config/banners/:id/toggle`
+
+```json
+{
+  "isActive": false
+}
+```
+
 ## Internal API
 
-| Method | Path                                   | Mô tả                              |
-| ------ | -------------------------------------- | ---------------------------------- |
-| `GET`  | `/internal/config/settings/:key`       | Lấy 1 setting kèm giá trị đã parse |
-| `GET`  | `/internal/config/settings?keys=a,b,c` | Lấy nhiều setting cùng lúc         |
+| Method | Path                                   | Auth              | Mo ta                                          |
+| ------ | -------------------------------------- | ----------------- | ---------------------------------------------- |
+| `GET`  | `/internal/config/settings/:key`       | `X-Service-Token` | Lay 1 setting va gia tri da parse.             |
+| `GET`  | `/internal/config/settings?keys=a,b,c` | `X-Service-Token` | Lay nhieu setting; key khong ton tai tra null. |
 
-## Event outbound
+## Events outbound
 
 - `config.setting_updated`
 - `config.maintenance_changed`
 - `config.banner_changed`
 
-## Lỗi thường gặp
+## Loi thuong gap
 
 - `SETTING_NOT_FOUND`
 - `SETTING_KEY_EXISTS`

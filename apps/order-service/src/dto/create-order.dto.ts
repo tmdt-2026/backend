@@ -53,8 +53,8 @@ export class CreateOrderDto {
   @IsEnum(['full', 'installment'])
   payment_type: 'full' | 'installment';
 
-  @IsEnum(['cod', 'vnpay', 'momo', 'bank_transfer'])
-  payment_method: 'cod' | 'vnpay' | 'momo' | 'bank_transfer';
+  @IsEnum(['cod', 'vnpay'])
+  payment_method: 'cod' | 'vnpay';
 
   @IsString()
   @IsNotEmpty()

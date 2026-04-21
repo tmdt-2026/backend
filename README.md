@@ -184,29 +184,33 @@ Trong `package.json` có sẵn:
 
 ## API Gateway
 
-Gateway nhận request HTTP và proxy đến đúng service.
+Gateway nhan request HTTP va proxy den dung service.
 
-| Prefix                        | Service           |
-| ----------------------------- | ----------------- |
-| `/api/v1/auth`                | User Service      |
-| `/api/v1/users`               | User Service      |
-| `/api/v1/addresses`           | User Service      |
-| `/api/v1/users/me/fcm-tokens` | User Service      |
-| `/internal/users`             | User Service      |
-| `/api/v1/products`            | Product Service   |
-| `/internal/products`          | Product Service   |
-| `/api/v1/inventory`           | Inventory Service |
-| `/internal/inventory`         | Inventory Service |
-| `/api/v1/reviews`             | Review Service    |
-| `/api/v1/comments`            | Review Service    |
-| `/api/v1/uploads`             | Review Service    |
-| `/internal/reviews`           | Review Service    |
-| `/api/v1/config`              | Config Service    |
-| `/internal/config`            | Config Service    |
-| `/api/v1/orders`              | Order Service     |
-| `/internal/orders`            | Order Service     |
-| `/api/v1/payments`            | Payment Service   |
-| `/internal/payments`          | Payment Service   |
+| Prefix                        | Service              |
+| ----------------------------- | -------------------- |
+| `/api/v1/auth`                | User Service         |
+| `/api/v1/users`               | User Service         |
+| `/api/v1/addresses`           | User Service         |
+| `/api/v1/users/me/fcm-tokens` | User Service         |
+| `/internal/users`             | User Service         |
+| `/api/v1/products`            | Product Service      |
+| `/internal/products`          | Product Service      |
+| `/api/v1/inventory`           | Inventory Service    |
+| `/internal/inventory`         | Inventory Service    |
+| `/api/v1/reviews`             | Review Service       |
+| `/api/v1/comments`            | Review Service       |
+| `/api/v1/uploads`             | Review Service       |
+| `/internal/reviews`           | Review Service       |
+| `/api/v1/config`              | Config Service       |
+| `/internal/config`            | Config Service       |
+| `/api/v1/orders`              | Order Service        |
+| `/internal/orders`            | Order Service        |
+| `/api/v1/payments`            | Payment Service      |
+| `/internal/payments`          | Payment Service      |
+| `/api/v1/notifications`       | Notification Service |
+| `/internal/notifications`     | Notification Service |
+| `/api/v1/promotions`          | Promotion Service    |
+| `/internal/promotions`        | Promotion Service    |
 
 ## Tài liệu API theo service
 
@@ -217,6 +221,102 @@ Gateway nhận request HTTP và proxy đến đúng service.
 - [Config Service](apps/config-service/API_DOCUMENTATION.md)
 - [Promotion Service](apps/promotion-service/API_DOCUMENTATION.md)
 - [API Gateway](apps/tmdt/API_DOCUMENTATION.md)
+
+## Hướng dẫn sử dụng cho Frontend
+
+Frontend chỉ nên gọi qua Gateway, không gọi trực tiếp từng service.
+
+- Base URL local: `http://localhost:3000`
+- API prefix: `/api/v1`
+- Health check nhanh: `GET /health`
+
+### 1. Cấu hình API client
+
+Ví dụ với Axios:
+
+```ts
+import axios from 'axios';
+
+export const api = axios.create({
+  baseURL: 'http://localhost:3000/api/v1',
+  timeout: 15000,
+});
+
+api.interceptors.request.use((config) => {
+  const accessToken = localStorage.getItem('accessToken');
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return config;
+});
+```
+
+### 2. Luồng đăng nhập/đăng xuất
+
+1. Đăng ký: `POST /auth/register`
+2. Đăng nhập: `POST /auth/login`
+3. Lưu `accessToken` + `refreshToken`
+4. Khi `401`: gọi `POST /auth/refresh`, cập nhật token rồi retry request
+5. Đăng xuất: `POST /auth/logout`
+
+Chi tiết payload: xem [apps/user-service/API_DOCUMENTATION.md](apps/user-service/API_DOCUMENTATION.md)
+
+### 3. Mapping API theo màn hình Frontend
+
+- Trang chủ:
+  - `GET /config/settings`
+  - `GET /config/banners`
+- Danh sách sản phẩm:
+  - `GET /products?categoryId=...&isActive=true`
+  - `GET /products/categories`
+  - `GET /products/models`
+- Chi tiết sản phẩm:
+  - `GET /products/:id`
+  - `GET /reviews/products/:productId`
+  - `GET /reviews/products/:productId/stats`
+  - `GET /comments/products/:productId`
+- Tài khoản người dùng:
+  - `GET /users/me`
+  - `PATCH /users/me`
+  - `GET /users/me/addresses`
+  - `POST /users/me/addresses`
+- Giỏ hàng/checkout (phía FE):
+  - Kiểm tra voucher: `POST /promotions/apply`
+  - (Khi có flow order/payment đầy đủ) gọi thêm `/orders` và `/payments`
+
+### 4. Endpoint cần token
+
+Các nhóm thường cần `Authorization: Bearer <token>`:
+
+- `/users/*`
+- `/orders/*`
+- `/payments/*`
+- `/promotions/apply`
+- Các endpoint ghi dữ liệu review/comment (`POST/PUT/PATCH/DELETE`)
+
+Các endpoint public phổ biến:
+
+- `/products/*` (hiện tại)
+- `/config/settings`, `/config/banners`
+- `/reviews/products/*`, `/comments/products/*`
+- `/promotions` (GET)
+
+### 5. Quy ước xử lý lỗi trên FE
+
+- `400`: hiển thị thông báo theo message backend.
+- `401`: refresh token rồi retry 1 lần.
+- `403`: báo người dùng không đủ quyền.
+- `404`: hiển thị trạng thái không tìm thấy (sản phẩm/voucher/...)
+- `502`: backend service phía sau gateway đang không sẵn sàng.
+
+### 6. File upload review
+
+Gửi `multipart/form-data` cho `POST /reviews`:
+
+- Fields: `orderId`, `productId`, `rating`, `content`
+- Files: field name `images` (tối đa 5 file)
+
+Chi tiết giới hạn và response: xem [apps/review-service/API_DOCUMENTATION.md](apps/review-service/API_DOCUMENTATION.md)
 
 ## Ghi chú về database
 

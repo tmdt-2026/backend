@@ -1,27 +1,53 @@
-# Product Service — Tài Liệu API
+# Product Service - API Documentation
 
 > Service: Product Service
 > Base URL: `http://localhost:3004/api/v1`
-> Transport: HTTP + RabbitMQ
 > Content-Type: `application/json`
+> Transport: HTTP + RabbitMQ
 
-## Tổng quan
+## Tong quan
 
-Product Service quản lý sản phẩm, biến thể, giá và trạng thái hoạt động. HTTP API trả JSON trực tiếp từ controller/service, không có lớp `success/data` wrapper.
+Product Service quan ly danh muc, model, san pham va bien the san pham.
+
+- Service da ap JWT + role guard cho HTTP API.
+- Endpoint tao/sua/xoa product, category, model, variant yeu cau role `admin`.
+- Response tra truc tiep tu service, khong co wrapper `success/data`.
+
+## Health
+
+| Method | Path      | Auth   | Mo ta         |
+| ------ | --------- | ------ | ------------- |
+| `GET`  | `/health` | Public | Health check. |
 
 ## HTTP API
 
-| Method   | Path                                  | Auth   | Mô tả                                                        |
-| -------- | ------------------------------------- | ------ | ------------------------------------------------------------ |
-| `POST`   | `/products`                           | Bearer | Tạo sản phẩm mới cùng danh sách variants                     |
-| `GET`    | `/products`                           | Public | Danh sách sản phẩm, hỗ trợ lọc theo `categoryId`, `isActive` |
-| `GET`    | `/products/:id`                       | Public | Lấy chi tiết sản phẩm                                        |
-| `PATCH`  | `/products/:id`                       | Bearer | Cập nhật sản phẩm                                            |
-| `DELETE` | `/products/:id`                       | Bearer | Xoá mềm sản phẩm và variants                                 |
-| `PATCH`  | `/products/variants/:variantId`       | Bearer | Cập nhật variant                                             |
-| `PATCH`  | `/products/variants/:variantId/price` | Bearer | Cập nhật giá variant và ghi lịch sử                          |
+| Method   | Path                                  | Auth   | Mo ta                                         |
+| -------- | ------------------------------------- | ------ | --------------------------------------------- |
+| `GET`    | `/products/categories`                | Public | Lay danh sach categories.                     |
+| `POST`   | `/products/categories`                | Admin  | Tao category moi.                             |
+| `GET`    | `/products/models`                    | Public | Lay danh sach models.                         |
+| `POST`   | `/products/models`                    | Admin  | Tao model moi.                                |
+| `POST`   | `/products`                           | Admin  | Tao san pham moi kem variants.                |
+| `POST`   | `/products/:id/variants`              | Admin  | Tao them variant cho san pham da co.          |
+| `GET`    | `/products`                           | Public | Danh sach san pham, ho tro filter.            |
+| `GET`    | `/products/category/:categoryId`      | Public | Tim san pham theo category.                   |
+| `GET`    | `/products/:id`                       | Public | Lay chi tiet san pham.                        |
+| `GET`    | `/products/:id/variants`              | Public | Lay danh sach variant cua 1 san pham.         |
+| `PATCH`  | `/products/:id`                       | Admin  | Cap nhat san pham.                            |
+| `DELETE` | `/products/:id`                       | Admin  | Xoa mem san pham.                             |
+| `GET`    | `/products/variants/:variantId`       | Public | Lay chi tiet 1 variant.                       |
+| `PATCH`  | `/products/variants/:variantId`       | Admin  | Cap nhat thong tin variant.                   |
+| `PATCH`  | `/products/variants/:variantId/price` | Admin  | Cap nhat gia variant va ghi lich su thay doi. |
+| `DELETE` | `/products/variants/:variantId`       | Admin  | Xoa mem variant.                              |
 
-### Body quan trọng
+### Query params
+
+`GET /products`
+
+- `categoryId`
+- `isActive=true|false`
+
+### Body mau
 
 `POST /products`
 
@@ -31,7 +57,7 @@ Product Service quản lý sản phẩm, biến thể, giá và trạng thái ho
   "modelId": "101",
   "categoryId": "5",
   "imgUrl": "https://cdn.example.com/products/iphone-16-pro.jpg",
-  "description": "Mẫu điện thoại cao cấp",
+  "description": "Mau dien thoai cao cap",
   "variants": [
     {
       "color": "Natural Titanium",
@@ -51,30 +77,52 @@ Product Service quản lý sản phẩm, biến thể, giá và trạng thái ho
 ```json
 {
   "price": 31990000,
-  "reason": "Điều chỉnh theo bảng giá mới",
+  "reason": "Dieu chinh theo bang gia moi",
   "changedBy": "user-id-uuid"
 }
 ```
 
-## Filter và quy ước
+`POST /products/:id/variants`
 
-- `GET /products?categoryId=...&isActive=true|false`
-- Xoá sản phẩm là xoá mềm: service gắn `deletedAt` và set `isActive=false`.
-- `GET /products/:id` trả sản phẩm kèm variants, category và model.
+```json
+{
+  "color": "Blue",
+  "ram": 8,
+  "storage": 128,
+  "importPrice": 18000000,
+  "originalPrice": 24990000,
+  "price": 22990000,
+  "stockQuantity": 15,
+  "isActive": true
+}
+```
+
+`PATCH /products/:id`
+
+```json
+{
+  "name": "iPhone 16 Pro Max",
+  "categoryId": "550e8400-e29b-41d4-a716-446655440000",
+  "modelId": "550e8400-e29b-41d4-a716-446655440001",
+  "description": "Cap nhat thong tin",
+  "isActive": true
+}
+```
+
+Luu y: `UpdateProductDto` dang validate `categoryId` va `modelId` theo UUID, trong khi create cho phep ID chuoi thong thuong.
 
 ## RabbitMQ RPC
 
-| cmd                            | Payload                                    | Kết quả                                   |
-| ------------------------------ | ------------------------------------------ | ----------------------------------------- |
-| `ping`                         | `{}`                                       | Trạng thái service                        |
-| `product.get-by-id`            | `{ id }`                                   | `{ success: true, data: product }`        |
-| `product.find-all`             | `{ categoryId?, isActive? }`               | Danh sách sản phẩm                        |
-| `product.get-variant`          | `{ variantId }`                            | `{ stockQuantity, isActive }`             |
-| `product.check-active`         | `{ productId }`                            | Trạng thái tồn tại và active của sản phẩm |
-| `product.update-variant-price` | `{ variantId, price, changedBy, reason? }` | Variant đã cập nhật                       |
+| Pattern                                   | Payload                                    | Ket qua                            |
+| ----------------------------------------- | ------------------------------------------ | ---------------------------------- |
+| `{ cmd: 'ping' }`                         | `{}`                                       | Trang thai service                 |
+| `{ cmd: 'product.get-by-id' }`            | `{ id }`                                   | `{ success: true, data: product }` |
+| `{ cmd: 'product.find-all' }`             | `{ categoryId?, isActive? }`               | Danh sach san pham                 |
+| `{ cmd: 'product.get-variant' }`          | `{ variantId }`                            | Thong tin variant                  |
+| `{ cmd: 'product.check-active' }`         | `{ productId }`                            | Trang thai ton tai va active       |
+| `{ cmd: 'product.update-variant-price' }` | `{ variantId, price, changedBy, reason? }` | Variant da cap nhat                |
 
-## Lỗi thường gặp
+## Loi thuong gap
 
-- `404` khi không tìm thấy sản phẩm hoặc variant.
-- `PATCH /products/variants/:variantId/price` yêu cầu `changedBy` hợp lệ.
-- `UpdateProductDto` hiện dùng `UUID` cho `categoryId` và `modelId` trong code update, nên client cần gửi đúng định dạng mà validation đang chấp nhận.
+- `404` khi khong tim thay product/variant.
+- `PATCH /products/variants/:variantId/price` yeu cau `changedBy`.

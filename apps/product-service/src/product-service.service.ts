@@ -45,6 +45,7 @@ export class ProductService {
       where: {
         deletedAt: null,
         ...(filter.categoryId && { categoryId: filter.categoryId }),
+        ...(typeof filter.isActive === 'boolean' && { isActive: filter.isActive }),
       },
       include: {
         variants: true, // Lấy tất cả biến thể
@@ -102,6 +103,80 @@ export class ProductService {
     });
   }
   // ==================== VARIANT ====================
+  async createVariant(productId: string, data: CreateProductDto['variants'][number]) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, deletedAt: true },
+    });
+
+    if (!product || product.deletedAt) {
+      throw new NotFoundException('Không tìm thấy sản phẩm để tạo biến thể');
+    }
+
+    return this.prisma.productVariant.create({
+      data: {
+        productId,
+        color: data.color,
+        ram: data.ram,
+        storage: data.storage,
+        importPrice: data.importPrice,
+        originalPrice: data.originalPrice,
+        price: data.price,
+        stockQuantity: data.stockQuantity,
+        isActive: data.isActive ?? true,
+      },
+    });
+  }
+
+  async findVariantsByProductId(productId: string) {
+    return this.prisma.productVariant.findMany({
+      where: {
+        productId,
+        deletedAt: null,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findVariantById(variantId: string) {
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      include: {
+        product: {
+          include: {
+            category: true,
+            model: true,
+          },
+        },
+      },
+    });
+
+    if (!variant || variant.deletedAt) {
+      throw new NotFoundException('Không tìm thấy biến thể sản phẩm');
+    }
+
+    return variant;
+  }
+
+  async softDeleteVariant(variantId: string) {
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      select: { id: true, deletedAt: true },
+    });
+
+    if (!variant || variant.deletedAt) {
+      throw new NotFoundException('Không tìm thấy biến thể sản phẩm');
+    }
+
+    return this.prisma.productVariant.update({
+      where: { id: variantId },
+      data: {
+        isActive: false,
+        deletedAt: new Date(),
+      },
+    });
+  }
+
   async updateVariant(variantId: string, data: UpdateVariantDto) {
     return this.prisma.productVariant.update({
       where: { id: variantId },

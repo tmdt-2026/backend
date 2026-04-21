@@ -1,35 +1,62 @@
-# Inventory Service — Tài Liệu API
+# Inventory Service - API Documentation
 
 > Service: Inventory Service
 > Base URL: `http://localhost:3003/api/v1`
-> Transport: HTTP + RabbitMQ
 > Content-Type: `application/json`
+> Transport: HTTP + RabbitMQ
 
-## Tổng quan
+## Tong quan
 
-Inventory Service quản lý tồn kho theo `productVariantId`, ghi nhận giao dịch nhập/xuất/điều chỉnh và phát sự kiện khi tồn kho thay đổi. Response HTTP được bọc theo format `success/data`.
+Inventory Service quan ly ton kho theo `productVariantId`, bao gom nhap kho, dieu chinh, low-stock va lich su giao dich.
 
-## Xác thực
+## Xac thuc
 
-- Hầu hết API cần JWT Bearer token.
-- Các endpoint `admin/staff` yêu cầu role tương ứng.
-- `POST /inventory/bulk-check` dùng cho service nội bộ và yêu cầu `X-Service-Token`.
+- Da so endpoint can JWT Bearer token.
+- Endpoint noi bo `POST /inventory/bulk-check` can `X-Service-Token`.
+
+## Health
+
+| Method | Path      | Auth   | Mo ta         |
+| ------ | --------- | ------ | ------------- |
+| `GET`  | `/health` | Public | Health check. |
 
 ## HTTP API
 
-| Method  | Path                                 | Auth                  | Mô tả                           |
-| ------- | ------------------------------------ | --------------------- | ------------------------------- | ------------------------------ |
-| `GET`   | `/health`                            | Public                | Health check                    |
-| `GET`   | `/inventory`                         | Bearer + roles `admin | staff`                          | Danh sách tồn kho              |
-| `GET`   | `/inventory/low-stock`               | Bearer + roles `admin | staff`                          | Danh sách variant sắp hết hàng |
-| `POST`  | `/inventory/bulk-check`              | `X-Service-Token`     | Kiểm tra đủ hàng cho nhiều item |
-| `GET`   | `/inventory/:variantId`              | Bearer + roles `admin | staff`                          | Chi tiết tồn kho của 1 variant |
-| `GET`   | `/inventory/:variantId/transactions` | Bearer + roles `admin | staff`                          | Lịch sử giao dịch              |
-| `POST`  | `/inventory/:variantId/import`       | Bearer + roles `admin | staff`                          | Nhập kho                       |
-| `POST`  | `/inventory/:variantId/adjustment`   | Bearer + role `admin` | Điều chỉnh tồn kho              |
-| `PATCH` | `/inventory/:variantId/threshold`    | Bearer + role `admin` | Cập nhật ngưỡng low-stock       |
+| Method  | Path                                 | Auth                      | Mo ta                                 |
+| ------- | ------------------------------------ | ------------------------- | ------------------------------------- |
+| `GET`   | `/inventory`                         | Bearer (`admin`, `staff`) | Danh sach ton kho (co paging/filter). |
+| `GET`   | `/inventory/low-stock`               | Bearer (`admin`, `staff`) | Danh sach variant sap het hang.       |
+| `POST`  | `/inventory/bulk-check`              | `X-Service-Token`         | Kiem tra du hang cho nhieu item.      |
+| `GET`   | `/inventory/:variantId`              | Bearer (`admin`, `staff`) | Chi tiet ton kho cua 1 variant.       |
+| `GET`   | `/inventory/:variantId/transactions` | Bearer (`admin`, `staff`) | Lich su giao dich cua variant.        |
+| `POST`  | `/inventory/:variantId/import`       | Bearer (`admin`, `staff`) | Nhap kho.                             |
+| `POST`  | `/inventory/:variantId/adjustment`   | Bearer (`admin`)          | Dieu chinh ton kho theo so thuc te.   |
+| `PATCH` | `/inventory/:variantId/threshold`    | Bearer (`admin`)          | Cap nhat nguong low-stock.            |
 
-### Body quan trọng
+### Query params
+
+`GET /inventory`
+
+- `page` (default `1`)
+- `limit` (default `20`, max `100`)
+- `variantId` (UUID)
+- `lowStockOnly` (`true|false`, default `false`)
+- `zeroStockOnly` (`true|false`, default `false`)
+- `sortBy` (`quantity|reservedQuantity|updatedAt`, default `updatedAt`)
+- `sortOrder` (`asc|desc`, default `desc`)
+
+`GET /inventory/low-stock`
+
+- `includeZero` (`true|false`, default `true`)
+- `page`, `limit`
+
+`GET /inventory/:variantId/transactions`
+
+- `page`, `limit`
+- `type` (`import|export_sale|export_return|reserve|release_reserve|adjustment`)
+- `fromDate`, `toDate` (ISO date string)
+
+### Body mau
 
 `POST /inventory/bulk-check`
 
@@ -47,7 +74,7 @@ Inventory Service quản lý tồn kho theo `productVariantId`, ghi nhận giao 
 ```json
 {
   "quantity": 100,
-  "note": "Nhập từ lô hàng 2026-04",
+  "note": "Nhap tu lo hang 2026-04",
   "referenceId": "GRN-0001"
 }
 ```
@@ -57,40 +84,35 @@ Inventory Service quản lý tồn kho theo `productVariantId`, ghi nhận giao 
 ```json
 {
   "quantityAfter": 85,
-  "note": "Kiểm kê thực tế cuối ngày"
+  "note": "Kiem ke cuoi ngay"
 }
 ```
 
 `PATCH /inventory/:variantId/threshold`
 
 ```json
-{ "lowStockThreshold": 10 }
+{
+  "lowStockThreshold": 10
+}
 ```
 
-## Response chính
+## RabbitMQ
 
-- `GET /inventory` trả `data` là danh sách inventory và `meta` gồm `page`, `limit`, `total`, `totalPages`.
-- `GET /inventory/:variantId` trả một inventory đã map: `id`, `productVariantId`, `quantity`, `reservedQuantity`, `availableQuantity`, `lowStockThreshold`, `isLowStock`.
-- `POST /inventory/bulk-check` trả `data.allAvailable` và `data.items[]` với `requested`, `available`, `sufficient`.
-- `POST /inventory/:variantId/import` trả transaction vừa tạo và snapshot inventory mới.
-
-## RabbitMQ events
-
-### Consumer
+### Consumer patterns
 
 - `product.variant_created`
 - `order.created`
 - `order.confirmed`
 - `order.cancelled`
 
-### Publisher
+### Publisher events
 
 - `inventory.stock_low`
 - `inventory.stock_updated`
 - `order.reserve_failed`
 
-## Lỗi thường gặp
+## Loi thuong gap
 
-- `INVENTORY_NOT_FOUND` khi chưa có record tồn kho cho variant.
-- `INSUFFICIENT_STOCK` khi không đủ hàng để reserve hoặc xuất.
-- `variantId` trong HTTP API phải là UUID hợp lệ.
+- `INVENTORY_NOT_FOUND`
+- `INSUFFICIENT_STOCK`
+- `variantId` khong dung dinh dang UUID

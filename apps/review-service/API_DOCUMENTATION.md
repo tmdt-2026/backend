@@ -1,117 +1,83 @@
-# Review Service — Tài Liệu API
+# Review Service - API Documentation
 
 > Service: Review Service
 > Base URL: `http://localhost:3002/api/v1`
-> Transport: HTTP + RabbitMQ
 > Content-Type: `application/json`
+> Transport: HTTP + RabbitMQ
 
-## Tổng quan
+## Tong quan
 
-Review Service quản lý product reviews và comments. Phần lớn response HTTP được bọc theo format `success/data`; riêng các endpoint public vẫn trả dữ liệu trực tiếp trong `data`.
+Review Service quan ly reviews va comments cho san pham.
 
-## Xác thực
+## Xac thuc
 
-- `GET` public không cần token.
-- `POST /reviews`, `GET /reviews/me`, `POST/PUT/DELETE/PATCH /comments/*` cần JWT Bearer token.
-- Các route admin cần role `admin`.
-- Internal endpoint cần `X-Service-Token`.
+Service ap global JWT + roles guard.
+
+- Public: `GET /health`, `GET /reviews/products/:productId`, `GET /reviews/products/:productId/stats`, `GET /comments/products/:productId`
+- Customer/Staff/Admin: tao review, tao comment, reply comment, xem review cua toi.
+- Admin: xem danh sach reviews, an/hien review, an/hien comment.
+- Customer: sua comment cua minh.
+- Customer/Admin: xoa comment.
+- Internal endpoint can `X-Service-Token`.
+
+## Health
+
+| Method | Path      | Auth   | Mo ta         |
+| ------ | --------- | ------ | ------------- |
+| `GET`  | `/health` | Public | Health check. |
 
 ## Reviews API
 
-| Method  | Path                                 | Auth                     | Mô tả                          |
-| ------- | ------------------------------------ | ------------------------ | ------------------------------ | ------ | ------------------ |
-| `GET`   | `/reviews/products/:productId`       | Public                   | Danh sách review theo sản phẩm |
-| `GET`   | `/reviews/products/:productId/stats` | Public                   | Thống kê rating                |
-| `POST`  | `/reviews`                           | Bearer + roles `customer | staff                          | admin` | Tạo review kèm ảnh |
-| `GET`   | `/reviews/me`                        | Bearer + roles `customer | staff                          | admin` | Review của tôi     |
-| `GET`   | `/reviews`                           | Bearer + role `admin`    | Danh sách review quản trị      |
-| `PATCH` | `/reviews/:id/visibility`            | Bearer + role `admin`    | Ẩn/hiện review                 |
+| Method  | Path                                 | Auth                          | Mo ta                              |
+| ------- | ------------------------------------ | ----------------------------- | ---------------------------------- |
+| `GET`   | `/reviews/products/:productId`       | Public                        | Danh sach review theo san pham.    |
+| `GET`   | `/reviews/products/:productId/stats` | Public                        | Thong ke rating cua san pham.      |
+| `POST`  | `/reviews`                           | Bearer (`customer`,`staff`,`admin`) | Tao review kem anh.      |
+| `GET`   | `/reviews/me`                        | Bearer (`customer`,`staff`,`admin`) | Lay review cua toi.      |
+| `GET`   | `/reviews`                           | Bearer (`admin`)              | Danh sach review cho quan tri.      |
+| `PATCH` | `/reviews/:id/visibility`            | Bearer (`admin`)              | An/hien review.                    |
 
-### Body quan trọng
+### Query params
 
-`POST /reviews` là `multipart/form-data`:
+`GET /reviews/products/:productId` va `GET /reviews/me`
+
+- `page` (default `1`)
+- `limit` (default `10`, max `50`)
+- `rating` (`1..5`)
+- `hasImage=true|false`
+- `sortBy` (`createdAt|rating`, default `createdAt`)
+- `sortOrder` (`asc|desc`, default `desc`)
+
+`POST /reviews` dung `multipart/form-data`:
 
 - Form fields: `orderId`, `productId`, `rating`, `content?`
-- Files: field `images`, tối đa 5 file, kích thước mỗi file tối đa 5MB
-
-```json
-{
-  "orderId": "uuid",
-  "productId": "uuid",
-  "rating": 5,
-  "content": "Sản phẩm đúng mô tả, đóng gói tốt"
-}
-```
-
-`PATCH /reviews/:id/visibility`
-
-```json
-{
-  "isVisible": false,
-  "adminNote": "Nội dung không phù hợp"
-}
-```
-
-### Stats response
-
-`GET /reviews/products/:productId/stats` trả:
-
-```json
-{
-  "productId": "uuid",
-  "average": 4.8,
-  "totalCount": 120,
-  "distribution": { "five": 90, "four": 20, "three": 6, "two": 3, "one": 1 },
-  "percentages": { "five": 75, "four": 17, "three": 5, "two": 2, "one": 1 }
-}
-```
+- Files: field `images`, toi da 5 file, moi file toi da 5MB
 
 ## Comments API
 
-| Method   | Path                            | Auth                     | Mô tả                             |
-| -------- | ------------------------------- | ------------------------ | --------------------------------- | ----------- | --------------- |
-| `GET`    | `/comments/products/:productId` | Public                   | Cây comment theo sản phẩm         |
-| `POST`   | `/comments`                     | Bearer + roles `customer | staff                             | admin`      | Tạo comment gốc |
-| `POST`   | `/comments/:id/reply`           | Bearer + roles `customer | staff                             | admin`      | Trả lời comment |
-| `PUT`    | `/comments/:id`                 | Bearer + role `customer` | Sửa comment trong cửa sổ cho phép |
-| `DELETE` | `/comments/:id`                 | Bearer + roles `customer | admin`                            | Xoá comment |
-| `PATCH`  | `/comments/:id/visibility`      | Bearer + role `admin`    | Ẩn/hiện comment                   |
+| Method   | Path                            | Auth                          | Mo ta                                 |
+| -------- | ------------------------------- | ----------------------------- | ------------------------------------- |
+| `GET`    | `/comments/products/:productId` | Public                        | Cay comment theo san pham.            |
+| `POST`   | `/comments`                     | Bearer (`customer`,`staff`,`admin`) | Tao comment goc.               |
+| `POST`   | `/comments/:id/reply`           | Bearer (`customer`,`staff`,`admin`) | Tra loi comment.              |
+| `PUT`    | `/comments/:id`                 | Bearer (`customer`)           | Sua comment trong cua so cho phep.    |
+| `DELETE` | `/comments/:id`                 | Bearer (`customer`,`admin`)   | Xoa comment.                          |
+| `PATCH`  | `/comments/:id/visibility`      | Bearer (`admin`)              | An/hien comment.                      |
 
-### Body quan trọng
-
-`POST /comments`
-
-```json
-{
-  "productId": "uuid",
-  "content": "Mình muốn hỏi thêm về kích thước hộp sản phẩm"
-}
-```
-
-`POST /comments/:id/reply`
-
-```json
-{ "content": "Bên mình sẽ phản hồi trong hôm nay" }
-```
-
-### Quy ước comment
-
-- Comment tree có tối đa 3 tầng tính cả root.
-- Cửa sổ sửa comment mặc định là 15 phút, cấu hình qua `app.commentEditWindowMs`.
-- `GET /comments/products/:productId` chỉ trả comment visible.
+`GET /comments/products/:productId` ho tro `page`, `limit`.
 
 ## Internal API
 
-| Method | Path                                          | Mô tả                      |
-| ------ | --------------------------------------------- | -------------------------- |
-| `GET`  | `/internal/reviews/products/:productId/stats` | Lấy thống kê review nội bộ |
+| Method | Path                                          | Auth              | Mo ta                                 |
+| ------ | --------------------------------------------- | ----------------- | ------------------------------------- |
+| `GET`  | `/internal/reviews/products/:productId/stats` | `X-Service-Token` | Lay thong ke noi bo (`productId`, `average`, `total`). |
 
-## RabbitMQ events outbound
+## Events outbound
 
 - `review.created`
 - `comment.replied`
 
-## Lỗi thường gặp
+## Loi thuong gap
 
 - `ORDER_NOT_FOUND`
 - `NOT_ORDER_OWNER`

@@ -21,80 +21,226 @@ if (rootEnvPath) {
 const prisma = new PrismaClient();
 
 const IDS = {
-  variant256: '88888888-8888-8888-8888-888888888888',
-  variant512: '99999999-9999-9999-9999-999999999999',
+  variantIphone16Pro256: '88888888-8888-8888-8888-888888888888',
+  variantIphone16Pro512: '99999999-9999-9999-9999-999999999999',
+  variantIphone16Blue128: '12121212-1212-4121-8121-121212121212',
+  variantIphone16Pink256: '13131313-1313-4131-8131-131313131313',
+  variantIpadAirM2Wifi128: '14141414-1414-4141-8141-141414141414',
+  variantIpadAirM2Cellular256: '15151515-1515-4151-8151-151515151515',
 } as const;
 
 async function main() {
   console.log('Seeding inventory-service...');
 
-  await prisma.inventory.upsert({
-    where: { productVariantId: IDS.variant256 },
-    update: {
+  const inventorySeed = [
+    {
+      productVariantId: IDS.variantIphone16Pro256,
       quantity: 20,
       reservedQuantity: 2,
       lowStockThreshold: 5,
     },
-    create: {
-      productVariantId: IDS.variant256,
-      quantity: 20,
+    {
+      productVariantId: IDS.variantIphone16Pro512,
+      quantity: 10,
+      reservedQuantity: 1,
+      lowStockThreshold: 3,
+    },
+    {
+      productVariantId: IDS.variantIphone16Blue128,
+      quantity: 35,
+      reservedQuantity: 4,
+      lowStockThreshold: 8,
+    },
+    {
+      productVariantId: IDS.variantIphone16Pink256,
+      quantity: 22,
+      reservedQuantity: 3,
+      lowStockThreshold: 6,
+    },
+    {
+      productVariantId: IDS.variantIpadAirM2Wifi128,
+      quantity: 18,
       reservedQuantity: 2,
       lowStockThreshold: 5,
     },
-  });
+    {
+      productVariantId: IDS.variantIpadAirM2Cellular256,
+      quantity: 12,
+      reservedQuantity: 1,
+      lowStockThreshold: 4,
+    },
+  ] as const;
 
-  await prisma.inventory.upsert({
-    where: { productVariantId: IDS.variant512 },
-    update: {
-      quantity: 10,
-      reservedQuantity: 1,
-      lowStockThreshold: 3,
-    },
-    create: {
-      productVariantId: IDS.variant512,
-      quantity: 10,
-      reservedQuantity: 1,
-      lowStockThreshold: 3,
-    },
-  });
+  for (const item of inventorySeed) {
+    await prisma.inventory.upsert({
+      where: { productVariantId: item.productVariantId },
+      update: {
+        quantity: item.quantity,
+        reservedQuantity: item.reservedQuantity,
+        lowStockThreshold: item.lowStockThreshold,
+      },
+      create: {
+        productVariantId: item.productVariantId,
+        quantity: item.quantity,
+        reservedQuantity: item.reservedQuantity,
+        lowStockThreshold: item.lowStockThreshold,
+      },
+    });
+  }
 
   await prisma.inventoryTransaction.deleteMany({
-    where: { referenceId: { in: ['SEED-GRN-1', 'SEED-ORD-1'] } },
+    where: {
+      referenceId: {
+        in: [
+          'SEED-GRN-16P-256',
+          'SEED-GRN-16P-512',
+          'SEED-GRN-16-128',
+          'SEED-GRN-16-256',
+          'SEED-GRN-IPAD-128',
+          'SEED-GRN-IPAD-256',
+          'SEED-ORD-16P-256',
+          'SEED-ORD-16P-512',
+          'SEED-ORD-16-128',
+          'SEED-ORD-16-256',
+          'SEED-ORD-IPAD-128',
+          'SEED-ORD-IPAD-256',
+        ],
+      },
+    },
   });
 
   await prisma.inventoryTransaction.createMany({
     data: [
       {
-        productVariantId: IDS.variant256,
+        productVariantId: IDS.variantIphone16Pro256,
         type: InventoryTxnType.import,
         quantityChange: 20,
         quantityBefore: 0,
         quantityAfter: 20,
-        referenceId: 'SEED-GRN-1',
+        referenceId: 'SEED-GRN-16P-256',
         referenceType: TxnReferenceType.import_bill,
         note: 'Initial import from seed',
         createdBy: 'seed-script',
       },
       {
-        productVariantId: IDS.variant256,
+        productVariantId: IDS.variantIphone16Pro256,
         type: InventoryTxnType.reserve,
         quantityChange: -2,
         quantityBefore: 20,
         quantityAfter: 20,
-        referenceId: 'SEED-ORD-1',
+        referenceId: 'SEED-ORD-16P-256',
         referenceType: TxnReferenceType.order,
         note: 'Reserved for test order',
         createdBy: 'seed-script',
       },
       {
-        productVariantId: IDS.variant512,
+        productVariantId: IDS.variantIphone16Pro512,
         type: InventoryTxnType.import,
         quantityChange: 10,
         quantityBefore: 0,
         quantityAfter: 10,
-        referenceId: 'SEED-GRN-1',
+        referenceId: 'SEED-GRN-16P-512',
         referenceType: TxnReferenceType.import_bill,
         note: 'Initial import from seed',
+        createdBy: 'seed-script',
+      },
+      {
+        productVariantId: IDS.variantIphone16Pro512,
+        type: InventoryTxnType.reserve,
+        quantityChange: -1,
+        quantityBefore: 10,
+        quantityAfter: 10,
+        referenceId: 'SEED-ORD-16P-512',
+        referenceType: TxnReferenceType.order,
+        note: 'Reserved for test order',
+        createdBy: 'seed-script',
+      },
+      {
+        productVariantId: IDS.variantIphone16Blue128,
+        type: InventoryTxnType.import,
+        quantityChange: 35,
+        quantityBefore: 0,
+        quantityAfter: 35,
+        referenceId: 'SEED-GRN-16-128',
+        referenceType: TxnReferenceType.import_bill,
+        note: 'Initial import from seed',
+        createdBy: 'seed-script',
+      },
+      {
+        productVariantId: IDS.variantIphone16Blue128,
+        type: InventoryTxnType.reserve,
+        quantityChange: -4,
+        quantityBefore: 35,
+        quantityAfter: 35,
+        referenceId: 'SEED-ORD-16-128',
+        referenceType: TxnReferenceType.order,
+        note: 'Reserved for test order',
+        createdBy: 'seed-script',
+      },
+      {
+        productVariantId: IDS.variantIphone16Pink256,
+        type: InventoryTxnType.import,
+        quantityChange: 22,
+        quantityBefore: 0,
+        quantityAfter: 22,
+        referenceId: 'SEED-GRN-16-256',
+        referenceType: TxnReferenceType.import_bill,
+        note: 'Initial import from seed',
+        createdBy: 'seed-script',
+      },
+      {
+        productVariantId: IDS.variantIphone16Pink256,
+        type: InventoryTxnType.reserve,
+        quantityChange: -3,
+        quantityBefore: 22,
+        quantityAfter: 22,
+        referenceId: 'SEED-ORD-16-256',
+        referenceType: TxnReferenceType.order,
+        note: 'Reserved for test order',
+        createdBy: 'seed-script',
+      },
+      {
+        productVariantId: IDS.variantIpadAirM2Wifi128,
+        type: InventoryTxnType.import,
+        quantityChange: 18,
+        quantityBefore: 0,
+        quantityAfter: 18,
+        referenceId: 'SEED-GRN-IPAD-128',
+        referenceType: TxnReferenceType.import_bill,
+        note: 'Initial import from seed',
+        createdBy: 'seed-script',
+      },
+      {
+        productVariantId: IDS.variantIpadAirM2Wifi128,
+        type: InventoryTxnType.reserve,
+        quantityChange: -2,
+        quantityBefore: 18,
+        quantityAfter: 18,
+        referenceId: 'SEED-ORD-IPAD-128',
+        referenceType: TxnReferenceType.order,
+        note: 'Reserved for test order',
+        createdBy: 'seed-script',
+      },
+      {
+        productVariantId: IDS.variantIpadAirM2Cellular256,
+        type: InventoryTxnType.import,
+        quantityChange: 12,
+        quantityBefore: 0,
+        quantityAfter: 12,
+        referenceId: 'SEED-GRN-IPAD-256',
+        referenceType: TxnReferenceType.import_bill,
+        note: 'Initial import from seed',
+        createdBy: 'seed-script',
+      },
+      {
+        productVariantId: IDS.variantIpadAirM2Cellular256,
+        type: InventoryTxnType.reserve,
+        quantityChange: -1,
+        quantityBefore: 12,
+        quantityAfter: 12,
+        referenceId: 'SEED-ORD-IPAD-256',
+        referenceType: TxnReferenceType.order,
+        note: 'Reserved for test order',
         createdBy: 'seed-script',
       },
     ],
