@@ -17,10 +17,21 @@ if (rootEnvPath) {
   loadEnv({ path: rootEnvPath });
 }
 
-function makeProxy(target: string) {
+function makeProxy(target: string, basePath?: string) {
+  const normalizedTarget = target.replace(/\/$/, '');
+
   return createProxyMiddleware({
-    target,
+    target: normalizedTarget,
     changeOrigin: true,
+    pathRewrite: basePath
+      ? (path: string) => {
+          const suffix = path.startsWith(basePath)
+            ? path.slice(basePath.length)
+            : path;
+          const normalizedSuffix = suffix === '/' ? '' : suffix;
+          return `${basePath}${normalizedSuffix}`;
+        }
+      : undefined,
     onError: (_err, _req, res: any) => {
       if (!res.headersSent) {
         res.writeHead(502, { 'Content-Type': 'application/json' });
@@ -40,20 +51,18 @@ function makeProxy(target: string) {
 }
 
 function mountProxy(expressApp: any, mountPath: string, target: string) {
-  expressApp.use(
-    mountPath,
-    (req: any, _res: any, next: any) => {
-      const suffix = req.url === '/' ? '' : req.url;
-      req.url = `${mountPath}${suffix}`;
-      next();
-    },
-    makeProxy(target),
-  );
+  expressApp.use(mountPath, makeProxy(target, mountPath));
 }
 
 async function bootstrap() {
   const logger = new Logger('APIGateway');
   const port = parseInt(process.env.TMDT_PORT ?? process.env.PORT ?? '3000', 10);
+  const corsOriginRaw = process.env.CORS_ORIGIN ?? 'http://127.0.0.1:5500,http://localhost:5500,http://localhost:3000';
+  const allowAllOrigins = corsOriginRaw.trim() === '*';
+  const allowedOrigins = corsOriginRaw
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
   const USER_SERVICE_URL = process.env.USER_SERVICE_URL ?? 'http://localhost:3001';
   const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL ?? 'http://localhost:3004';
@@ -67,6 +76,29 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   const expressApp = app.getHttpAdapter().getInstance();
+
+  // Handle CORS at gateway level so preflight requests are resolved before proxying.
+  expressApp.use((req: any, res: any, next: any) => {
+    const requestOrigin = req.headers.origin as string | undefined;
+    const canAllowOrigin =
+      allowAllOrigins ||
+      !requestOrigin ||
+      allowedOrigins.includes(requestOrigin);
+
+    if (canAllowOrigin) {
+      res.setHeader('Access-Control-Allow-Origin', allowAllOrigins ? (requestOrigin || '*') : (requestOrigin || allowedOrigins[0] || '*'));
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type,X-Service-Token');
+    }
+
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+
+    next();
+  });
 
   // USER
   mountProxy(expressApp, '/api/v1/auth', USER_SERVICE_URL);
@@ -110,7 +142,7 @@ async function bootstrap() {
   mountProxy(expressApp, '/internal/promotions', PROMOTION_SERVICE_URL);
 
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ?? '*',
+    origin: allowAllOrigins ? true : allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   });

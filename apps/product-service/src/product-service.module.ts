@@ -27,7 +27,7 @@ const rootEnvPath = [
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET ?? 'jwt-secret-change-in-production',
-      signOptions: { expiresIn: process.env.JWT_ACCESS_EXPIRY ?? '15m' },
+      signOptions: { expiresIn: (process.env.JWT_ACCESS_EXPIRY ?? '15m') as any },
     }),
     ConfigModule.forRoot({
       isGlobal: true,

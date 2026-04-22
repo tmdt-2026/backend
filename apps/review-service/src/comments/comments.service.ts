@@ -33,6 +33,10 @@ export class CommentsService {
     this.editWindowMs = config.get<number>('app.commentEditWindowMs') ?? 15 * 60 * 1000;
   }
 
+  private resolveUserDisplayName(user: { fullName?: string; userName?: string } | null | undefined, fallback = 'Ẩn danh') {
+    return user?.fullName ?? user?.userName ?? fallback;
+  }
+
   async getByProduct(productId: string, query: QueryCommentsDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -80,7 +84,7 @@ export class CommentsService {
 
     const user = await this.userRpc.getUserById(currentUser.userId);
     const roleBadge = this.resolveRoleBadge(currentUser.roles);
-    const userName = user?.detail?.fullName ?? user?.userName ?? 'Ẩn danh';
+    const userName = this.resolveUserDisplayName(user);
 
     const comment = await this.commentsRepository.create({
       productId: dto.productId,
@@ -101,7 +105,7 @@ export class CommentsService {
 
     const user = await this.userRpc.getUserById(currentUser.userId);
     const roleBadge = this.resolveRoleBadge(currentUser.roles);
-    const userName = user?.detail?.fullName ?? user?.userName ?? 'Ẩn danh';
+    const userName = this.resolveUserDisplayName(user);
 
     const reply = await this.commentsRepository.create({
       productId: parent.productId,

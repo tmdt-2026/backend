@@ -30,9 +30,13 @@ Product Service quan ly danh muc, model, san pham va bien the san pham.
 | `POST`   | `/products`                           | Admin  | Tao san pham moi kem variants.                |
 | `POST`   | `/products/:id/variants`              | Admin  | Tao them variant cho san pham da co.          |
 | `GET`    | `/products`                           | Public | Danh sach san pham, ho tro filter.            |
+| `GET`    | `/products/search`                    | Public | Tim san pham theo keyword.                    |
 | `GET`    | `/products/category/:categoryId`      | Public | Tim san pham theo category.                   |
 | `GET`    | `/products/:id`                       | Public | Lay chi tiet san pham.                        |
 | `GET`    | `/products/:id/variants`              | Public | Lay danh sach variant cua 1 san pham.         |
+| `GET`    | `/products/categories/search`         | Public | Tim category theo keyword.                    |
+| `GET`    | `/products/models/search`             | Public | Tim model theo keyword.                       |
+| `GET`    | `/products/variants/search`           | Public | Tim variant theo keyword.                     |
 | `PATCH`  | `/products/:id`                       | Admin  | Cap nhat san pham.                            |
 | `DELETE` | `/products/:id`                       | Admin  | Xoa mem san pham.                             |
 | `GET`    | `/products/variants/:variantId`       | Public | Lay chi tiet 1 variant.                       |
@@ -46,6 +50,25 @@ Product Service quan ly danh muc, model, san pham va bien the san pham.
 
 - `categoryId`
 - `isActive=true|false`
+
+`GET /products/search`
+
+- `keyword` (bat buoc khi tim kiem)
+- `categoryId` (tuy chon)
+- `isActive=true|false` (tuy chon)
+
+`GET /products/categories/search`
+
+- `keyword`
+
+`GET /products/models/search`
+
+- `keyword`
+
+`GET /products/variants/search`
+
+- `keyword`
+- `productId` (tuy chon)
 
 ### Body mau
 

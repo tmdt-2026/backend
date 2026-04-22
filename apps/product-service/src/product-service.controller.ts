@@ -36,6 +36,32 @@ export class ProductController {
     return this.productService.findAllModels();
   }
 
+  @Get('search')
+  @Public()
+  async searchProducts(
+    @Query('keyword') keyword?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('isActive') isActive?: string,
+  ) {
+    return this.productService.searchProducts({
+      keyword,
+      categoryId,
+      isActive: isActive === 'true',
+    });
+  }
+
+  @Get('categories/search')
+  @Public()
+  async searchCategories(@Query('keyword') keyword?: string) {
+    return this.productService.searchCategories(keyword);
+  }
+
+  @Get('models/search')
+  @Public()
+  async searchModels(@Query('keyword') keyword?: string) {
+    return this.productService.searchModels(keyword);
+  }
+
   @Post('categories')
   @Roles('admin')
   async createCategory(@Body() dto: CreateCategoryDto) {
@@ -61,6 +87,21 @@ export class ProductController {
   @Public()
   async getVariantById(@Param('variantId') variantId: string) {
     return this.productService.findVariantById(variantId);
+  }
+
+  @Get('variants/search')
+  @Public()
+  async searchVariants(
+    @Query('keyword') keyword?: string,
+    @Query('productId') productId?: string,
+  ) {
+    const term = String(keyword ?? '').trim();
+
+    if (!term) {
+      return [];
+    }
+
+    return this.productService.searchVariants(term, productId);
   }
 
   @Delete('variants/:variantId')

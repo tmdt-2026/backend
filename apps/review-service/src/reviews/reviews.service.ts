@@ -34,6 +34,14 @@ export class ReviewsService {
     private readonly uploadService: UploadService,
   ) {}
 
+  private resolveUserDisplayName(user: UserRpcResponse | null | undefined, fallback = 'Ẩn danh') {
+    return user?.fullName ?? user?.userName ?? fallback;
+  }
+
+  private resolveUserAvatar(user: UserRpcResponse | null | undefined) {
+    return user?.avatarUrl ?? null;
+  }
+
   async createReview(dto: CreateReviewDto, files: Express.Multer.File[], currentUser: UserPayload) {
     // Validate image count
     if (files && files.length > 5) throw new TooManyImagesException();
@@ -42,7 +50,7 @@ export class ReviewsService {
     const order = await this.orderRpc.getOrderById(dto.orderId);
     if (!order) throw new OrderNotFoundException();
     if (order.userId !== currentUser.userId) throw new NotOrderOwnerException();
-    if (order.status !== 'completed') throw new OrderNotCompletedException();
+    if (order.status !== 'delivered') throw new OrderNotCompletedException();
 
     const productInOrder = order.items.some((item) => item.productId === dto.productId);
     if (!productInOrder) throw new ProductNotInOrderException();
@@ -65,7 +73,7 @@ export class ReviewsService {
 
     // STEP 5: Get user snapshot
     const user = await this.userRpc.getUserById(currentUser.userId);
-    const userName = user?.detail?.fullName ?? user?.userName ?? 'Ẩn danh';
+    const userName = this.resolveUserDisplayName(user);
 
     // STEP 6: Save review
     const review = await this.reviewsRepository.create({
@@ -188,8 +196,8 @@ export class ReviewsService {
       productNameSnapshot: review.productNameSnapshot,
       user: {
         id: review.userId,
-        name: review.userNameSnapshot ?? user?.detail?.fullName ?? user?.userName ?? 'Ẩn danh',
-        avatar: user?.detail?.avatarUrl ?? user?.avatarUrl ?? null,
+        name: review.userNameSnapshot ?? this.resolveUserDisplayName(user),
+        avatar: this.resolveUserAvatar(user),
       },
       createdAt: review.createdAt,
     };

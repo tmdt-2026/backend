@@ -10,6 +10,11 @@ import { CreateModelDto } from './dto/create-model.dto';
 export class ProductService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private buildSearchTerm(keyword?: string) {
+    const term = String(keyword ?? '').trim();
+    return term.length ? term : null;
+  }
+
   async createProduct(data: CreateProductDto) {
     try {
       const { variants, ...productData } = data;
@@ -55,6 +60,52 @@ export class ProductService {
       orderBy: {
         createdAt: 'desc',
       },
+    });
+  }
+
+  async searchProducts(filter: {
+    keyword?: string;
+    categoryId?: string;
+    isActive?: boolean;
+  } = {}) {
+    const keyword = this.buildSearchTerm(filter.keyword);
+    const numericStorage = keyword && Number.isFinite(Number(keyword)) ? Number(keyword) : null;
+
+    if (!keyword) {
+      return this.findAllProducts({
+        categoryId: filter.categoryId,
+        isActive: filter.isActive,
+      });
+    }
+
+    return this.prisma.product.findMany({
+      where: {
+        deletedAt: null,
+        ...(filter.categoryId && { categoryId: filter.categoryId }),
+        ...(typeof filter.isActive === 'boolean' && { isActive: filter.isActive }),
+        OR: [
+          { name: { contains: keyword } },
+          { description: { contains: keyword } },
+          { category: { name: { contains: keyword } } },
+          { model: { modelName: { contains: keyword } } },
+          {
+            variants: {
+              some: {
+                OR: [
+                  { color: { contains: keyword } },
+                  ...(numericStorage !== null ? [{ storage: numericStorage }] : []),
+                ],
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        variants: true,
+        category: true,
+        model: true,
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
   async findProductById(id: string) {
@@ -244,6 +295,24 @@ export class ProductService {
       orderBy: { sortOrder: 'asc' },
     });
   }
+
+  async searchCategories(keyword?: string) {
+    const term = this.buildSearchTerm(keyword);
+
+    if (!term) {
+      return this.findAllCategories();
+    }
+
+    return this.prisma.category.findMany({
+      where: {
+        OR: [
+          { name: { contains: term } },
+          { slug: { contains: term } },
+        ],
+      },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
   // ==================== MODEL ====================
   async createModel(data: CreateModelDto) {
     return this.prisma.model.create({
@@ -263,6 +332,61 @@ export class ProductService {
   async findAllModels() {
     return this.prisma.model.findMany({
       where: { deletedAt: null },
+      orderBy: { modelName: 'asc' },
+    });
+  }
+
+  async searchModels(keyword?: string) {
+    const term = this.buildSearchTerm(keyword);
+
+    if (!term) {
+      return this.findAllModels();
+    }
+
+    return this.prisma.model.findMany({
+      where: {
+        deletedAt: null,
+        OR: [
+          { modelName: { contains: term } },
+          { modelNumber: { contains: term } },
+          { brand: { contains: term } },
+          { cpu: { contains: term } },
+          { operaSystem: { contains: term } },
+        ],
+      },
+      orderBy: { modelName: 'asc' },
+    });
+  }
+
+  async searchVariants(keyword?: string, productId?: string) {
+    const term = this.buildSearchTerm(keyword);
+
+    if (!term) {
+      return [];
+    }
+
+    const numericStorage = Number.isFinite(Number(term)) ? Number(term) : null;
+
+    return this.prisma.productVariant.findMany({
+      where: {
+        deletedAt: null,
+        ...(productId && { productId }),
+        OR: [
+          { color: { contains: term } },
+          { product: { name: { contains: term } } },
+          { product: { category: { name: { contains: term } } } },
+          { product: { model: { modelName: { contains: term } } } },
+          ...(numericStorage !== null ? [{ storage: numericStorage }] : []),
+        ],
+      },
+      include: {
+        product: {
+          include: {
+            category: true,
+            model: true,
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

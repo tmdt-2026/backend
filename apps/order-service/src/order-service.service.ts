@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
@@ -35,6 +36,7 @@ type ProductVariantRpcResult = {
 @Injectable()
 export class OrderService {
   private readonly frontendBaseUrl = process.env.FRONTEND_URL ?? process.env.APP_URL ?? 'http://localhost:3000';
+  private readonly internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN ?? 'internal-secret-token-change-in-production';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -43,11 +45,11 @@ export class OrderService {
     private readonly productClient: ClientProxy,
   ) {}
 
-  async createInvoice(dto: CreateOrderDto) {
-    return this.createOrder(dto);
+  async createInvoice(dto: CreateOrderDto, userId: string) {
+    return this.createOrder(dto, userId);
   }
 
-  async createOrder(dto: CreateOrderDto) {
+  async createOrder(dto: CreateOrderDto, userId: string) {
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Đơn hàng phải có ít nhất 1 sản phẩm');
     }
@@ -75,7 +77,7 @@ export class OrderService {
     const result = await this.prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
         data: {
-          user_id: dto.user_id,
+          user_id: userId,
           promotion_id: dto.promotion_id || null,
           payment_type: dto.payment_type,
           payment_method: dto.payment_method,
@@ -241,7 +243,24 @@ export class OrderService {
       throw new NotFoundException('Không tìm thấy đơn hàng');
     }
 
-    return { success: true, data: order };
+    return { success: true, data: this.mapOrderToResponse(order) };
+  }
+
+  async getOrderByIdInternal(id: string, token?: string) {
+    if (token !== this.internalServiceToken) {
+      throw new ForbiddenException('Không có quyền truy cập nội bộ');
+    }
+
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { order_details: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    return { success: true, data: this.mapOrderToResponse(order) };
   }
 
   async getInvoiceById(id: string) {
@@ -338,7 +357,7 @@ export class OrderService {
       throw new NotFoundException('Không tìm thấy đơn');
     }
 
-  if (order.status === 'completed') {
+  if (order.status === 'delivered') {
     throw new BadRequestException('Đơn đã hoàn thành, không thể hủy');
   }
 
@@ -358,4 +377,44 @@ export class OrderService {
     data: updated,
   };
 }
+
+  private mapOrderToResponse(order: any) {
+    return {
+      id: order.id,
+      user_id: order.user_id,
+      promotion_id: order.promotion_id,
+      order_code: (order as any).order_code ?? `ORD-${order.id.slice(0, 8).toUpperCase()}`,
+      status: order.status,
+      payment_type: order.payment_type,
+      payment_method: order.payment_method,
+      subtotal_price: Number(order.subtotal_price),
+      discount_amount: Number(order.discount_amount),
+      shipping_fee: 0,
+      total_amount: Number(order.subtotal_price),
+      final_amount: Number(order.total_price),
+      total_price: Number(order.total_price),
+      total_product: order.total_product,
+      shipping_address: {
+        name: order.shipping_name,
+        phone: order.shipping_phone,
+        province: order.shipping_province,
+        district: order.shipping_district,
+        ward: order.shipping_ward,
+        street: order.shipping_street,
+      },
+      note: order.note,
+      createdAt: order.created_at.toISOString(),
+      updatedAt: order.updated_at.toISOString(),
+      items: order.order_details?.map((d: any) => ({
+        product_variant_id: d.product_variant_id,
+        product_name: d.product_name,
+        variant_label: d.variant_label,
+        quantity: d.quantity,
+        import_price: Number(d.import_price),
+        price: Number(d.price),
+        item_discount: Number(d.item_discount),
+        subtotal: Number(d.price) * Number(d.quantity) - Number(d.item_discount ?? 0) * Number(d.quantity),
+      })) ?? [],
+    };
+  }
 }

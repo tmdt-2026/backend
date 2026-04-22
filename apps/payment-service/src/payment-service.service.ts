@@ -137,9 +137,7 @@ export class PaymentService {
   }
 
   private async buildPaymentNotificationPayload(orderId: string, payment: any, query: any) {
-    const orderResponse = await axios.get(`${this.orderServiceUrl}/orders/${orderId}`, {
-      headers: { 'X-Service-Token': this.internalServiceToken },
-    });
+    const orderResponse = await axios.get(`${this.orderServiceUrl}/orders/internal/${orderId}?token=${encodeURIComponent(this.internalServiceToken)}`);
     const order = orderResponse.data?.data ?? orderResponse.data;
     const userProfile = await this.getUserProfile(order.user_id);
 
