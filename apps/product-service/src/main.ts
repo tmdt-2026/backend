@@ -34,6 +34,10 @@ async function bootstrap() {
 
   const app = await NestFactory.create(ProductServiceModule);
 
+  // Allow larger payloads (e.g. long descriptions, multiple variant objects)
+  app.use(require('express').json({ limit: '5mb' }));
+  app.use(require('express').urlencoded({ extended: true, limit: '5mb' }));
+
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {

@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/installment-client"
+}
+
+datasource db {
+  provider = "mysql" 
+  url      = env("INSTALLMENT_DATABASE_URL")
+}
+
+model InstallmentPlan {
+  id              String   @id @default(uuid())
+  name            String   
+  duration_months Int      
+  interest_rate   Float    
+  min_order_value Float    
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+
+  applications    InstallmentApplication[]
+}
+
+model InstallmentApplication {
+  id              String   @id @default(uuid())
+  user_id         String
+  order_id        String
+  plan_id         String
+  status          String   @default("pending") // pending, approved, rejected
+  total_amount    Float    
+  loan_amount     Float    
+  monthly_payment Float    
+  created_at      DateTime @default(now())
+  
+  plan            InstallmentPlan @relation(fields: [plan_id], references: [id])
+  schedules       InstallmentSchedule[]
+
+  @@unique([order_id])
+}
+
+model InstallmentSchedule {
+  id              String   @id @default(uuid())
+  application_id  String
+  due_date        DateTime
+  amount_due      Float
+  status          String   @default("unpaid") 
+  
+  application     InstallmentApplication @relation(fields: [application_id], references: [id])
+}

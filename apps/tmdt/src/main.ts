@@ -72,6 +72,7 @@ async function bootstrap() {
   const CONFIG_SERVICE_URL    = process.env.CONFIG_SERVICE_URL    ?? 'http://localhost:3011';
   const PROMOTION_SERVICE_URL     = process.env.PROMOTION_SERVICE_URL     ?? 'http://localhost:3006';
   const PAYMENT_SERVICE_URL       = process.env.PAYMENT_SERVICE_URL       ?? 'http://localhost:3007';
+  const INSTALLMENT_SERVICE_URL   = process.env.INSTALLMENT_SERVICE_URL   ?? 'http://localhost:3008';
   const NOTIFICATION_SERVICE_URL  = process.env.NOTIFICATION_SERVICE_URL  ?? 'http://localhost:3009';
 
   const app = await NestFactory.create(AppModule, { bodyParser: false });
@@ -133,6 +134,10 @@ async function bootstrap() {
   mountProxy(expressApp, '/api/v1/payments', PAYMENT_SERVICE_URL);
   mountProxy(expressApp, '/internal/payments', PAYMENT_SERVICE_URL);
 
+  // INSTALLMENT
+  mountProxy(expressApp, '/api/v1/installments', INSTALLMENT_SERVICE_URL);
+  mountProxy(expressApp, '/internal/installments', INSTALLMENT_SERVICE_URL);
+
   // NOTIFICATION
   mountProxy(expressApp, '/api/v1/notifications', NOTIFICATION_SERVICE_URL);
   mountProxy(expressApp, '/internal/notifications', NOTIFICATION_SERVICE_URL);
@@ -159,6 +164,7 @@ async function bootstrap() {
   logger.log(`   review  → ${REVIEW_SERVICE_URL}`);
   logger.log(`   config  → ${CONFIG_SERVICE_URL}`);
   logger.log(`   payment → ${PAYMENT_SERVICE_URL}`);
+  logger.log(`   install → ${INSTALLMENT_SERVICE_URL}`);
   logger.log(`   notif   → ${NOTIFICATION_SERVICE_URL}`);
   logger.log(`   promo   → ${PROMOTION_SERVICE_URL}`);
   logger.log('========================================');

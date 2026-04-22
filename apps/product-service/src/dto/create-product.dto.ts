@@ -1,9 +1,10 @@
-import { 
-  IsString, 
-  IsNumber, 
-  IsOptional, 
-  IsArray, 
-  ValidateNested, 
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  IsArray,
+  ValidateNested,
   Min,
   IsNotEmpty
 } from 'class-validator';
@@ -39,6 +40,8 @@ export class CreateVariantDto {
   @Min(0)
   stockQuantity: number;
 
+  @IsOptional()
+  @IsBoolean()
   isActive?: boolean;
 }
 

@@ -57,15 +57,15 @@ export class OrderServiceController {
   /** Xem hóa đơn theo mã */
   @Get('invoices/:id')
   @Roles('customer', 'staff', 'admin')
-  getInvoiceById(@Param('id') id: string) {
-    return this.orderService.getInvoiceById(id);
+  getInvoiceById(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.orderService.getInvoiceById(id, user);
   }
 
   /** Xem chi tiết đơn — customer/staff/admin */
   @Get(':id')
   @Roles('customer', 'staff', 'admin')
-  getOrderById(@Param('id') id: string) {
-    return this.orderService.getOrderById(id);
+  getOrderById(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.orderService.getOrderById(id, user);
   }
 
   /** Internal order lookup for other services */
@@ -91,7 +91,7 @@ deleteOrder(@Param('id') id: string) {
 }
   @Post(':id/cancel')
   @Roles('customer', 'staff', 'admin')
-  cancelOrder(@Param('id') id: string) {
-    return this.orderService.cancelOrder(id);
+  cancelOrder(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.orderService.cancelOrder(id, user);
   }
 }

@@ -7,6 +7,7 @@ CREATE DATABASE IF NOT EXISTS db_config        CHARACTER SET utf8mb4 COLLATE utf
 CREATE DATABASE IF NOT EXISTS db_carts         CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS db_promotions    CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS db_notifications CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS db_installments  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Grant quyền cho root
 GRANT ALL PRIVILEGES ON db_users.*         TO 'root'@'%';

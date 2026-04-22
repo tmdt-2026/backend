@@ -10,6 +10,15 @@ import { CreateModelDto } from './dto/create-model.dto';
 export class ProductService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly productInclude = {
+    variants: true,
+    category: true,
+    model: true,
+    images: {
+      orderBy: { sortOrder: 'asc' as const },
+    },
+  };
+
   private buildSearchTerm(keyword?: string) {
     const term = String(keyword ?? '').trim();
     return term.length ? term : null;
@@ -52,11 +61,7 @@ export class ProductService {
         ...(filter.categoryId && { categoryId: filter.categoryId }),
         ...(typeof filter.isActive === 'boolean' && { isActive: filter.isActive }),
       },
-      include: {
-        variants: true, // Lấy tất cả biến thể
-        category: true, // Lấy thông tin category (đảm bảo bảng CATEGORIES có ID tương ứng)
-        model: true, // Lấy thông tin model
-      },
+      include: this.productInclude,
       orderBy: {
         createdAt: 'desc',
       },
@@ -100,11 +105,7 @@ export class ProductService {
           },
         ],
       },
-      include: {
-        variants: true,
-        category: true,
-        model: true,
-      },
+      include: this.productInclude,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -115,6 +116,9 @@ export class ProductService {
         variants: { where: { deletedAt: null } },
         category: true,
         model: true,
+        images: {
+          orderBy: { sortOrder: 'asc' as const },
+        },
       },
     });
 

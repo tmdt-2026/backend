@@ -172,6 +172,26 @@ services:
     networks:
       - tmdt-network
 
+  installment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: installment-service
+        HAS_PRISMA: "true"
+    container_name: installment_service_tmdt
+    restart: unless-stopped
+    ports:
+      - "3008:3008"
+    env_file:
+      - .env.docker
+    environment:
+      DATABASE_URL: mysql://root:password@mysql:3306/db_installments
+    depends_on:
+      - mysql
+    networks:
+      - tmdt-network
+
   config-service:
     build:
       context: .

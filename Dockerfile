@@ -12,8 +12,8 @@ COPY package*.json ./
 RUN npm config set fetch-retries 5 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
-  npm config set foreground-scripts true && \
-    npm ci --omit=dev --ignore-scripts && \
+    npm config set foreground-scripts true && \
+    npm ci --omit=dev --ignore-scripts --legacy-peer-deps && \
     npm cache clean --force
 
 # ─── BUILD ───────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ RUN npm config set fetch-retries 5 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
   npm config set foreground-scripts true && \
-  (npm ci --no-audit --no-fund || (echo "npm ci failed, cleaning and retrying once..." && rm -rf node_modules && npm cache clean --force && npm ci --no-audit --no-fund))
+  (npm ci --no-audit --no-fund --legacy-peer-deps || (echo "npm ci failed, cleaning and retrying..." && rm -rf node_modules && npm cache clean --force && npm ci --no-audit --no-fund --legacy-peer-deps))
 
 # ✅ Generate Prisma clients FIRST (before build)
 RUN if [ "${HAS_PRISMA}" = "true" ]; then \

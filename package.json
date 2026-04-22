@@ -18,8 +18,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/tmdt/test/jest-e2e.json",
-    "prisma:generate": "npx prisma generate --schema=./apps/user-service/prisma/schema.prisma && npx prisma generate --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma generate --schema=./apps/review-service/prisma/schema.prisma && npx prisma generate --schema=./apps/product-service/prisma/schema.prisma && npx prisma generate --schema=./apps/config-service/prisma/schema.prisma && npx prisma generate --schema=./apps/promotion-service/prisma/schema.prisma && npx prisma generate --schema=./apps/notification-service/prisma/schema.prisma",
-    "prisma:migrate": "npx prisma migrate deploy --schema=./apps/user-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/review-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/product-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/config-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/promotion-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/notification-service/prisma/schema.prisma",
+    "prisma:generate": "npx prisma generate --schema=./apps/user-service/prisma/schema.prisma && npx prisma generate --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma generate --schema=./apps/review-service/prisma/schema.prisma && npx prisma generate --schema=./apps/product-service/prisma/schema.prisma && npx prisma generate --schema=./apps/config-service/prisma/schema.prisma && npx prisma generate --schema=./apps/promotion-service/prisma/schema.prisma && npx prisma generate --schema=./apps/notification-service/prisma/schema.prisma && npx prisma generate --schema=./apps/installment-service/prisma/schema.prisma",
+    "prisma:migrate": "npx prisma migrate deploy --schema=./apps/user-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/inventory-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/review-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/product-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/config-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/promotion-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/notification-service/prisma/schema.prisma && npx prisma migrate deploy --schema=./apps/installment-service/prisma/schema.prisma",
     "build:tmdt": "nest build tmdt",
     "build:user-service": "nest build user-service",
     "build:product-service": "nest build product-service",
@@ -30,6 +30,7 @@
     "build:config-service": "nest build config-service",
     "build:promotion-service": "nest build promotion-service",
     "build:notification-service": "nest build notification-service",
+    "build:installment-service": "nest build installment-service",
     "seed:user-service": "ts-node --project apps/user-service/tsconfig.app.json -r tsconfig-paths/register apps/user-service/prisma/seed.ts",
     "seed:product-service": "ts-node --project apps/product-service/tsconfig.app.json -r tsconfig-paths/register apps/product-service/prisma/seed.ts",
     "seed:inventory-service": "ts-node --project apps/inventory-service/tsconfig.app.json -r tsconfig-paths/register apps/inventory-service/prisma/seed.ts",
@@ -50,6 +51,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/schedule": "^6.1.1",
+    "@nestjs/swagger": "^11.3.0",
     "@nestjs/throttler": "^6.5.0",
     "@prisma/client": "^5.22.0",
     "@types/multer": "^2.1.0",
@@ -71,6 +73,7 @@
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -103,7 +106,8 @@
     "ts-node": "^10.9.0",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "webpack": "^5.106.2"
   },
   "prisma": {
     "seed": "node dist/apps/user-service/src/prisma/seed.js"

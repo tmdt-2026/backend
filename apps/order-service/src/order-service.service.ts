@@ -10,6 +10,7 @@ import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { UserPayload } from './common/decorators/current-user.decorator';
 import {
   OrderPublisher,
   ORDER_PRODUCT_RABBITMQ_CLIENT,
@@ -44,6 +45,10 @@ export class OrderService {
     @Inject(ORDER_PRODUCT_RABBITMQ_CLIENT)
     private readonly productClient: ClientProxy,
   ) {}
+
+  private canManageAnyOrder(user: UserPayload) {
+    return user.roles?.includes('admin') || user.roles?.includes('staff');
+  }
 
   async createInvoice(dto: CreateOrderDto, userId: string) {
     return this.createOrder(dto, userId);
@@ -233,7 +238,7 @@ export class OrderService {
     return { success: true, data: mapped };
   }
 
-  async getOrderById(id: string) {
+  async getOrderById(id: string, requester: UserPayload) {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: { order_details: true },
@@ -241,6 +246,10 @@ export class OrderService {
 
     if (!order) {
       throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    if (!this.canManageAnyOrder(requester) && order.user_id !== requester.userId) {
+      throw new ForbiddenException('Bạn không có quyền xem đơn hàng này');
     }
 
     return { success: true, data: this.mapOrderToResponse(order) };
@@ -263,8 +272,8 @@ export class OrderService {
     return { success: true, data: this.mapOrderToResponse(order) };
   }
 
-  async getInvoiceById(id: string) {
-    return this.getOrderById(id);
+  async getInvoiceById(id: string, requester: UserPayload) {
+    return this.getOrderById(id, requester);
   }
 
   /** Dùng bởi RMQ message pattern — trả null thay vì throw khi không tìm thấy */
@@ -348,7 +357,7 @@ export class OrderService {
     message: 'Đã xoá đơn hàng',
   };
   }
-  async cancelOrder(id: string) {
+  async cancelOrder(id: string, requester: UserPayload) {
   const order = await this.prisma.order.findUnique({
     where: { id },
   });
@@ -357,12 +366,21 @@ export class OrderService {
       throw new NotFoundException('Không tìm thấy đơn');
     }
 
+  const isPrivileged = this.canManageAnyOrder(requester);
+  if (!isPrivileged && order.user_id !== requester.userId) {
+    throw new ForbiddenException('Bạn không có quyền hủy đơn hàng này');
+  }
+
   if (order.status === 'delivered') {
     throw new BadRequestException('Đơn đã hoàn thành, không thể hủy');
   }
 
   if (order.status === 'cancelled') {
     throw new BadRequestException('Đơn đã bị hủy trước đó');
+  }
+
+  if (!isPrivileged && order.status !== 'pending') {
+    throw new BadRequestException('Chỉ có thể hủy đơn hàng đang chờ xác nhận');
   }
 
   const updated = await this.prisma.order.update({

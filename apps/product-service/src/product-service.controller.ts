@@ -46,7 +46,7 @@ export class ProductController {
     return this.productService.searchProducts({
       keyword,
       categoryId,
-      isActive: isActive === 'true',
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
     });
   }
 
@@ -153,7 +153,7 @@ export class ProductController {
   ) {
     return this.productService.findAllProducts({
       categoryId,
-      isActive: isActive === 'true',
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
     });
   }
 

@@ -344,6 +344,7 @@ async function main() {
     categoryId: string;
     name: string;
     imgUrl: string;
+    secondaryImgUrl: string;
     description: string;
     price: number;
     originalPrice: number;
@@ -383,6 +384,7 @@ async function main() {
           categoryId: category.id,
           name,
           imgUrl: getRealImageUrl(catalog.slug, modelIndex + variantIndex), // Dùng ảnh thật
+          secondaryImgUrl: getRealImageUrl(catalog.slug, modelIndex + variantIndex + 1),
           description: `${catalog.name} seed product for ${name}.`,
           price,
           originalPrice: Math.round(price * 1.12),
@@ -467,7 +469,7 @@ async function main() {
         },
         {
           productId: product.id,
-          imageUrl: `${product.imgUrl}&v=2`, // Tạo biến thể nhỏ để ảnh thứ 2 không bị trùng tuyệt đối nếu ứng dụng cache
+          imageUrl: product.secondaryImgUrl,
           altText: `${product.name} image 2`,
           sortOrder: 2,
         },
