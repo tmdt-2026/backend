@@ -52,7 +52,22 @@ export class ReviewsService {
     if (order.userId !== currentUser.userId) throw new NotOrderOwnerException();
     if (order.status !== 'delivered') throw new OrderNotCompletedException();
 
-    const productInOrder = order.items.some((item) => item.productId === dto.productId);
+    const variantMatched = dto.productVariantId
+      ? order.items.some((item) => item.productVariantId === dto.productVariantId)
+      : false;
+
+    let productInOrder = variantMatched || order.items.some((item) => item.productId === dto.productId);
+    if (!productInOrder) {
+      // Fallback: some order RPC responses may carry unresolved productId.
+      // Re-check by resolving each variant back to productId.
+      for (const item of order.items) {
+        const variantSummary = await this.productRpc.getVariantSummary(item.productVariantId);
+        if (variantSummary?.productId === dto.productId) {
+          productInOrder = true;
+          break;
+        }
+      }
+    }
     if (!productInOrder) throw new ProductNotInOrderException();
 
     // STEP 2: Verify product

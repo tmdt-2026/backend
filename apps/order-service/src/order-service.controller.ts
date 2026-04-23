@@ -54,6 +54,17 @@ export class OrderServiceController {
     return this.orderService.getMyOrders(user.userId, status);
   }
 
+  /** Internal status update for trusted services */
+  @Patch('internal/:id/status')
+  @Public()
+  updateStatusInternal(
+    @Param('id') id: string,
+    @Body() dto: UpdateOrderStatusDto,
+    @Query('token') token?: string,
+  ) {
+    return this.orderService.updateStatusInternal(id, dto, token);
+  }
+
   /** Xem hóa đơn theo mã */
   @Get('invoices/:id')
   @Roles('customer', 'staff', 'admin')

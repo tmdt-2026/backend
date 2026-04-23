@@ -1,9 +1,9 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsUUID } from 'class-validator';
 
 export class CreateModelDto {
-  @IsString()
-  @IsNotEmpty()
-  id: string; // Cho phép nhập ID thủ công (VD: 101, 102...)
+  @IsOptional()
+  @IsUUID()
+  id?: string;
 
   @IsString()
   @IsNotEmpty()

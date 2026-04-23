@@ -4,6 +4,7 @@ import {
   OrderPublisher,
   ORDER_INVENTORY_RABBITMQ_CLIENT,
   ORDER_NOTIFICATION_RABBITMQ_CLIENT,
+  ORDER_PROMOTION_RABBITMQ_CLIENT,
   ORDER_PRODUCT_RABBITMQ_CLIENT,
 } from './order.publisher';
 
@@ -39,6 +40,17 @@ import {
           options: {
             urls: [process.env.RABBITMQ_URL ?? 'amqp://tmdt:tmdt2026@rabbitmq:5672'],
             queue: process.env.PRODUCT_RABBITMQ_QUEUE ?? process.env.PRODUCT_QUEUE ?? 'product_queue',
+            queueOptions: { durable: true },
+          },
+        }),
+      },
+      {
+        name: ORDER_PROMOTION_RABBITMQ_CLIENT,
+        useFactory: () => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [process.env.RABBITMQ_URL ?? 'amqp://tmdt:tmdt2026@rabbitmq:5672'],
+            queue: process.env.PROMOTION_RABBITMQ_QUEUE ?? process.env.PROMOTION_QUEUE ?? 'promotion_queue',
             queueOptions: { durable: true },
           },
         }),

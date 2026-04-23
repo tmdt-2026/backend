@@ -1,8 +1,10 @@
 import { Controller, Post, Get, Param, Body, UseGuards, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ServiceAuthGuard } from '../common/guards/service-auth.guard';
+import { Public } from '../common/decorators/public.decorator';
 
 @Controller('internal/users')
+@Public()
 @UseGuards(ServiceAuthGuard)
 export class InternalController {
   constructor(

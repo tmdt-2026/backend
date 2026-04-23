@@ -120,6 +120,7 @@ model ProductVariant {
     priceHistories PriceHistory[]
 
     @@index([productId])
+    @@index([productId, color, ram, storage, deletedAt], map: "idx_variant_product_specs")
     @@map("PRODUCT_VARIANTS")
 }
 

@@ -10,6 +10,13 @@ export interface ProductRpcResponse {
   name: string;
 }
 
+export interface VariantSummaryRpcResponse {
+  variantId: string;
+  productId: string;
+  isActive: boolean;
+  stockQuantity: number;
+}
+
 @Injectable()
 export class ProductRpc {
   private readonly logger = new Logger(ProductRpc.name);
@@ -30,6 +37,23 @@ export class ProductRpc {
     } catch (err: any) {
       this.logger.error(`Product RMQ error for ${productId}: ${err.message}`);
       throw new ProductServiceUnavailableException();
+    }
+  }
+
+  async getVariantSummary(variantId: string): Promise<VariantSummaryRpcResponse | null> {
+    try {
+      const result = await firstValueFrom(
+        this.client
+          .send<{ success: boolean; data: VariantSummaryRpcResponse }>(
+            { cmd: 'product.get-variant' },
+            { variantId },
+          )
+          .pipe(timeout(this.timeoutMs)),
+      );
+      return result?.data ?? null;
+    } catch (err: any) {
+      this.logger.warn(`Product RMQ variant lookup failed for ${variantId}: ${err.message}`);
+      return null;
     }
   }
 }

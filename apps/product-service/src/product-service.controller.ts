@@ -14,6 +14,8 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateModelDto } from './dto/create-model.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
+import { UpdateModelDto } from './dto/update-model.dto';
 import { CreateVariantDto } from './dto/create-product.dto';
 import { Public } from './common/decorators/public.decorator';
 import { Roles } from './common/decorators/roles.decorator';
@@ -31,9 +33,9 @@ export class ProductController {
 
   @Get('models')
   @Public()
-  async getModels() {
+  async getModels(@Query('includeDeleted') includeDeleted?: string) {
     console.log('📂 Đang lấy danh sách model...');
-    return this.productService.findAllModels();
+    return this.productService.findAllModels(includeDeleted === 'true');
   }
 
   @Get('search')
@@ -74,6 +76,33 @@ export class ProductController {
     return this.productService.createModel(dto);
   }
 
+  @Patch('categories/:id')
+  @Roles('admin')
+  async updateCategory(
+    @Param('id') id: string,
+    @Body() dto: UpdateCategoryDto,
+  ) {
+    return this.productService.updateCategory(id, dto);
+  }
+
+  @Delete('categories/:id')
+  @Roles('admin')
+  async deleteCategory(@Param('id') id: string) {
+    return this.productService.deleteCategory(id);
+  }
+
+  @Patch('models/:id')
+  @Roles('admin')
+  async updateModel(@Param('id') id: string, @Body() dto: UpdateModelDto) {
+    return this.productService.updateModel(id, dto);
+  }
+
+  @Delete('models/:id')
+  @Roles('admin')
+  async softDeleteModel(@Param('id') id: string) {
+    return this.productService.softDeleteModel(id);
+  }
+
   @Patch('variants/:variantId')
   @Roles('admin')
   async updateVariant(
@@ -102,6 +131,17 @@ export class ProductController {
     }
 
     return this.productService.searchVariants(term, productId);
+  }
+
+  @Get('price-history')
+  @Roles('admin')
+  async getPriceHistory(@Query('limit') limit?: string) {
+    const parsedLimit = Number(limit);
+    const safeLimit =
+      Number.isFinite(parsedLimit) && parsedLimit > 0
+        ? Math.min(parsedLimit, 1000)
+        : 200;
+    return this.productService.findPriceHistory(safeLimit);
   }
 
   @Delete('variants/:variantId')

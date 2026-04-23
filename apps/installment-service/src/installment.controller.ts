@@ -18,12 +18,7 @@ export class InstallmentController {
   @Post('apply')
   @Roles('customer', 'staff', 'admin')
   async applyInstallment(@Body() body: ApplyInstallmentDto, @CurrentUser() user: UserPayload) {
-    return this.installmentService.applyForInstallment(
-      user,
-      body.orderId,
-      body.planId,
-      body.orderTotal
-    );
+    return this.installmentService.applyForInstallment(user, body);
   }
 
   @Get('applications')
@@ -44,6 +39,12 @@ export class InstallmentController {
     return this.installmentService.getApplicationSchedules(id, user);
   }
 
+  @Get('applications/order/:orderId')
+  @Roles('customer', 'staff', 'admin')
+  async getMyApplicationByOrder(@Param('orderId') orderId: string, @CurrentUser() user: UserPayload) {
+    return this.installmentService.getMyApplicationByOrder(orderId, user);
+  }
+
   @Patch('applications/:id/approve')
   @Roles('admin', 'staff')
   async approveApplication(@Param('id') id: string) {
@@ -54,5 +55,15 @@ export class InstallmentController {
   @Roles('admin', 'staff')
   async rejectApplication(@Param('id') id: string, @Body() body: { reason?: string }) {
     return this.installmentService.rejectApplication(id, body?.reason);
+  }
+
+  @Patch('schedules/:id/mark-paid')
+  @Roles('admin', 'staff')
+  async markSchedulePaid(
+    @Param('id') id: string,
+    @Body() body: { note?: string },
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.installmentService.markScheduleAsPaid(id, body?.note, user);
   }
 }

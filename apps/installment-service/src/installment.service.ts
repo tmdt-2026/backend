@@ -3,6 +3,7 @@ import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserPayload } from './common/decorators/current-user.decorator';
 import { InstallmentPublisher } from './publishers/installment.publisher';
+import { ApplyInstallmentDto } from './dto/apply-installment.dto';
 
 @Injectable()
 export class InstallmentService {
@@ -40,6 +41,13 @@ export class InstallmentService {
     return response.data?.data ?? response.data;
   }
 
+  private async updateOrderStatusInternal(orderId: string, status: 'confirmed' | 'cancelled') {
+    await axios.patch(
+      `${this.orderServiceUrl}/orders/internal/${orderId}/status?token=${encodeURIComponent(this.internalServiceToken)}`,
+      { status },
+    );
+  }
+
   private async getUserProfile(userId: string): Promise<{ userEmail: string; userName: string }> {
     try {
       const response = await axios.get(`${this.userServiceUrl}/internal/users/${userId}`, {
@@ -60,6 +68,32 @@ export class InstallmentService {
 
   private buildFrontendUrl(path: string) {
     return `${this.frontendBaseUrl.replace(/\/$/, '')}${path}`;
+  }
+
+  private async generateApplicationCode() {
+    let code = '';
+    let exists = true;
+    let retries = 0;
+    while (exists && retries < 10) {
+      retries += 1;
+      const now = new Date();
+      const yyyymm = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const random = Math.floor(Math.random() * 9000) + 1000;
+      code = `HS-${yyyymm}-${random}`;
+      const found = await this.prisma.installmentApplication.findUnique({
+        where: { application_code: code },
+        select: { id: true },
+      });
+      exists = Boolean(found);
+    }
+    if (!code || exists) {
+      code = `HS-${Date.now()}`;
+    }
+    return code;
+  }
+
+  private buildSchedulePaymentCode(applicationCode: string, installmentNo: number) {
+    return `${applicationCode}-K${String(installmentNo).padStart(2, '0')}`;
   }
 
   private assertCanViewApplication(application: { user_id: string }, user: UserPayload) {
@@ -136,7 +170,11 @@ export class InstallmentService {
     return totalPayable / months;
   }
 
-  async applyForInstallment(requester: UserPayload, orderId: string, planId: string, orderTotal: number) {
+  async applyForInstallment(requester: UserPayload, dto: ApplyInstallmentDto) {
+    const orderId = dto.orderId;
+    const planId = dto.planId;
+    const orderTotal = dto.orderTotal;
+
     if (!Number.isFinite(Number(orderTotal)) || Number(orderTotal) <= 0) {
       throw new BadRequestException('Tổng tiền đơn hàng không hợp lệ.');
     }
@@ -184,9 +222,19 @@ export class InstallmentService {
     try {
       result = await this.prisma.installmentApplication.create({
         data: {
+          application_code: await this.generateApplicationCode(),
           user_id: String(orderOwnerId || requester.userId),
           order_id: orderId,
           plan_id: planId,
+          full_name: dto.fullName.trim(),
+          phone_number: dto.phoneNumber.trim(),
+          email: dto.email.trim().toLowerCase(),
+          national_id: dto.nationalId.trim(),
+          monthly_income: Number(dto.monthlyIncome),
+          occupation: dto.occupation?.trim() || null,
+          company_name: dto.companyName?.trim() || null,
+          company_address: dto.companyAddress?.trim() || null,
+          application_note: dto.applicationNote?.trim() || null,
           status: 'pending',
           total_amount: effectiveOrderTotal,
           loan_amount: effectiveOrderTotal,
@@ -237,6 +285,8 @@ export class InstallmentService {
 
         schedulesData.push({
           application_id: application.id,
+          installment_no: i,
+          payment_code: this.buildSchedulePaymentCode(application.application_code, i),
           due_date: dueDate,
           amount_due: application.monthly_payment,
           status: 'unpaid'
@@ -247,6 +297,9 @@ export class InstallmentService {
         data: schedulesData,
       });
     });
+
+    const orderId = application.order_id;
+    await this.updateOrderStatusInternal(orderId, 'confirmed');
 
     const approved = await this.prisma.installmentApplication.findUnique({
       where: { id },
@@ -298,6 +351,8 @@ export class InstallmentService {
       data: { status: 'rejected' },
     });
 
+    await this.updateOrderStatusInternal(updated.order_id, 'cancelled');
+
     try {
       const profile = await this.getUserProfile(updated.user_id);
       await this.publisher.publishInstallmentRejected({
@@ -316,5 +371,51 @@ export class InstallmentService {
       message: reason ? `Đã từ chối hồ sơ: ${reason}` : 'Đã từ chối hồ sơ',
       application: updated,
     };
+  }
+
+  async getMyApplicationByOrder(orderId: string, user: UserPayload) {
+    const application = await this.prisma.installmentApplication.findUnique({
+      where: { order_id: orderId },
+      include: {
+        plan: true,
+        schedules: { orderBy: { due_date: 'asc' } },
+      },
+    });
+    if (!application) {
+      throw new NotFoundException('Đơn hàng này chưa có hồ sơ trả góp.');
+    }
+    this.assertCanViewApplication(application, user);
+    return application;
+  }
+
+  async markScheduleAsPaid(scheduleId: string, note: string | undefined, actor: UserPayload) {
+    if (!this.isPrivileged(actor)) {
+      throw new ForbiddenException('Bạn không có quyền xác nhận thanh toán trả góp.');
+    }
+
+    const schedule = await this.prisma.installmentSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        application: true,
+      },
+    });
+    if (!schedule) {
+      throw new NotFoundException('Không tìm thấy kỳ thanh toán trả góp.');
+    }
+    if (schedule.status === 'paid') {
+      return schedule;
+    }
+
+    const updated = await this.prisma.installmentSchedule.update({
+      where: { id: scheduleId },
+      data: {
+        status: 'paid',
+        payment_method: 'bank_transfer',
+        payment_note: note?.trim() || null,
+        paid_at: new Date(),
+      },
+    });
+
+    return updated;
   }
 }

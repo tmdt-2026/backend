@@ -2,7 +2,6 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import axios from 'axios';
 import * as crypto from 'crypto';
 import moment from 'moment';
-import * as qs from 'qs';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentPublisher } from './publishers/payment.publisher';
 import { CreatePaymentDto } from '../dto/create-payment.dto';
@@ -14,8 +13,18 @@ export class PaymentService {
   // Internal URLs must include the /api/v1 global prefix set in each service's main.ts
   private readonly orderServiceUrl = `${process.env.ORDER_SERVICE_URL ?? 'http://order-service:3005'}/api/v1`;
   private readonly userServiceUrl = `${process.env.USER_SERVICE_URL ?? 'http://user-service:3001'}/api/v1`;
+  private readonly configServiceUrl = `${process.env.CONFIG_SERVICE_URL ?? 'http://config-service:3011'}/api/v1`;
   private readonly internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN ?? 'internal-secret-token-change-in-production';
   private readonly frontendBaseUrl = process.env.FRONTEND_URL ?? process.env.APP_URL ?? 'http://localhost:3000';
+  private vnpayConfigCache:
+    | {
+        tmnCode?: string;
+        secretKey?: string;
+        vnpUrl?: string;
+        returnUrl?: string;
+        expiresAt: number;
+      }
+    | null = null;
 
   constructor(
     private prisma: PrismaService,
@@ -33,16 +42,85 @@ export class PaymentService {
       .join('&');
   }
 
+  private async loadVnpayConfigFromConfigService() {
+    const now = Date.now();
+    if (this.vnpayConfigCache && this.vnpayConfigCache.expiresAt > now) {
+      return this.vnpayConfigCache;
+    }
+
+    try {
+      const response = await axios.get(`${this.configServiceUrl}/internal/config/settings`, {
+        params: {
+          keys: 'vnp_tmn_code,vnp_hash_secret,vnp_url,vnp_return_url',
+        },
+        headers: {
+          'X-Service-Token': this.internalServiceToken,
+        },
+      });
+      const payload = response.data ?? {};
+      this.vnpayConfigCache = {
+        tmnCode: typeof payload.vnp_tmn_code === 'string' ? payload.vnp_tmn_code.trim() : '',
+        secretKey: typeof payload.vnp_hash_secret === 'string' ? payload.vnp_hash_secret.trim() : '',
+        vnpUrl: typeof payload.vnp_url === 'string' ? payload.vnp_url.trim() : '',
+        returnUrl: typeof payload.vnp_return_url === 'string' ? payload.vnp_return_url.trim() : '',
+        expiresAt: now + 5 * 60 * 1000,
+      };
+      return this.vnpayConfigCache;
+    } catch {
+      this.vnpayConfigCache = {
+        tmnCode: '',
+        secretKey: '',
+        vnpUrl: '',
+        returnUrl: '',
+        expiresAt: now + 60 * 1000,
+      };
+      return this.vnpayConfigCache;
+    }
+  }
+
+  private async getVnpayConfig(overrideReturnUrl?: string) {
+    const remote = await this.loadVnpayConfigFromConfigService();
+    const isProd = process.env.NODE_ENV === 'production';
+    const tmnCode =
+      remote.tmnCode ||
+      process.env.VNP_TMN_CODE ||
+      process.env.VNPAY_TMN_CODE ||
+      (isProd ? '' : '2QXUI4J4');
+    const secretKey =
+      remote.secretKey ||
+      process.env.VNP_HASH_SECRET ||
+      process.env.VNPAY_HASH_SECRET ||
+      (isProd ? '' : 'SECRETKEY');
+    const vnpUrl =
+      remote.vnpUrl ||
+      process.env.VNP_URL ||
+      process.env.VNPAY_URL ||
+      'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
+    const returnUrl =
+      overrideReturnUrl ||
+      remote.returnUrl ||
+      process.env.VNP_RETURN_URL ||
+      process.env.VNPAY_RETURN_URL ||
+      `${this.frontendBaseUrl.replace(/\/$/, '')}/order-confirmation.html`;
+
+    if (!tmnCode || !secretKey || !vnpUrl || !returnUrl) {
+      throw new BadRequestException(
+        'Thiếu cấu hình VNPay (VNP_TMN_CODE, VNP_HASH_SECRET, VNP_URL, VNP_RETURN_URL).',
+      );
+    }
+
+    return { tmnCode, secretKey, vnpUrl, returnUrl };
+  }
+
   async createPaymentUrl(dto: CreatePaymentDto, ipAddress: string) {
     const { amount, orderId, paymentMethod, description, returnUrl: clientReturnUrl } = dto;
     if (!Number.isFinite(amount) || Number(amount) <= 0) {
       throw new BadRequestException('Số tiền thanh toán không hợp lệ');
     }
 
-    const tmnCode = process.env.VNP_TMN_CODE;
-    const secretKey = process.env.VNP_HASH_SECRET;
-    let vnpUrl = process.env.VNP_URL;
-    const returnUrl = clientReturnUrl || process.env.VNP_RETURN_URL;
+    const { tmnCode, secretKey, vnpUrl: baseVnpUrl, returnUrl } =
+      await this.getVnpayConfig(clientReturnUrl);
+    let vnpUrl = baseVnpUrl;
 
     const createDate = moment().format('YYYYMMDDHHmmss');
     const now = new Date();
@@ -72,28 +150,26 @@ export class PaymentService {
           },
         });
 
-    let vnp_Params: any = {};
-    vnp_Params['vnp_Version'] = '2.1.0';
-    vnp_Params['vnp_Command'] = 'pay';
-    vnp_Params['vnp_TmnCode'] = tmnCode;
-    vnp_Params['vnp_Locale'] = 'vn';
-    vnp_Params['vnp_CurrCode'] = 'VND';
-    vnp_Params['vnp_TxnRef'] = orderId;
-    vnp_Params['vnp_OrderInfo'] = description || ('Thanh toan don hang:' + orderId);
-    vnp_Params['vnp_OrderType'] = 'other';
-    vnp_Params['vnp_Amount'] = amount * 100;
-    vnp_Params['vnp_ReturnUrl'] = returnUrl;
-    vnp_Params['vnp_IpAddr'] = ipAddress;
-    vnp_Params['vnp_CreateDate'] = createDate;
-    vnp_Params['vnp_BankCode'] = 'NCB';
+    const vnpParams: Record<string, string> = {
+      vnp_Version: '2.1.0',
+      vnp_Command: 'pay',
+      vnp_TmnCode: tmnCode,
+      vnp_Locale: 'vn',
+      vnp_CurrCode: 'VND',
+      vnp_TxnRef: orderId,
+      vnp_OrderInfo: description || `Thanh toan don hang:${orderId}`,
+      vnp_OrderType: 'other',
+      vnp_Amount: String(Math.round(Number(amount) * 100)),
+      vnp_ReturnUrl: returnUrl,
+      vnp_IpAddr: String(ipAddress || '127.0.0.1').split(',')[0].trim(),
+      vnp_CreateDate: createDate,
+      vnp_BankCode: 'NCB',
+    };
 
-    vnp_Params = this.sortObject(vnp_Params);
-    const signData = qs.stringify(vnp_Params, { encode: false });
+    const signData = this.sortAndSerializeVnpayParams(vnpParams);
     const hmac = crypto.createHmac('sha512', secretKey);
     const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
-
-    vnp_Params['vnp_SecureHash'] = signed;
-    vnpUrl += '?' + qs.stringify(vnp_Params, { encode: false });
+    vnpUrl += `?${signData}&vnp_SecureHash=${signed}`;
 
     // Response shape matches API docs: paymentUrl (not url)
     return {
@@ -191,7 +267,7 @@ export class PaymentService {
   }
 
   async updatePaymentStatus(query: any) {
-    const isValid = this.verifyVnpaySignature(query);
+    const isValid = await this.verifyVnpaySignature(query);
     if (!isValid) {
       throw new BadRequestException('Chữ ký VNPay không hợp lệ');
     }
@@ -294,13 +370,13 @@ export class PaymentService {
     return `Thanh toán thất bại (${String(responseCode ?? 'unknown')})`;
   }
 
-  private verifyVnpaySignature(query: Record<string, unknown>) {
+  private async verifyVnpaySignature(query: Record<string, unknown>) {
     const secureHash = String(query.vnp_SecureHash ?? '');
     if (!secureHash) {
       return false;
     }
 
-    const secretKey = process.env.VNP_HASH_SECRET ?? '';
+    const { secretKey } = await this.getVnpayConfig();
     if (!secretKey) {
       return false;
     }
@@ -355,19 +431,4 @@ export class PaymentService {
     return amount;
   }
 
-  private sortObject(obj: any) {
-    let sorted = {};
-    let str = [];
-    let key;
-    for (key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        str.push(encodeURIComponent(key));
-      }
-    }
-    str.sort();
-    for (key = 0; key < str.length; key++) {
-      sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, '+');
-    }
-    return sorted;
-  }
 }

@@ -22,9 +22,19 @@ model InstallmentPlan {
 
 model InstallmentApplication {
   id              String   @id @default(uuid())
+  application_code String  @unique
   user_id         String
   order_id        String
   plan_id         String
+  full_name       String
+  phone_number    String
+  email           String
+  national_id     String
+  monthly_income  Float
+  occupation      String?
+  company_name    String?
+  company_address String?
+  application_note String?
   status          String   @default("pending") // pending, approved, rejected
   total_amount    Float    
   loan_amount     Float    
@@ -40,9 +50,14 @@ model InstallmentApplication {
 model InstallmentSchedule {
   id              String   @id @default(uuid())
   application_id  String
+  installment_no  Int
+  payment_code    String   @unique
   due_date        DateTime
   amount_due      Float
   status          String   @default("unpaid") 
+  payment_method  String?
+  payment_note    String?
+  paid_at         DateTime?
   
   application     InstallmentApplication @relation(fields: [application_id], references: [id])
 }

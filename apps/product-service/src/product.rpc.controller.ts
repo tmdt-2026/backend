@@ -57,7 +57,7 @@ export class ProductRpcController {
   @MessagePattern({ cmd: 'product.get-variant' })
   async getVariant(@Payload() payload: { variantId: string }) {
     try {
-      const variant = await this.productService.getStockByVariant(payload.variantId);
+      const variant = await this.productService.getVariantSummaryForOrder(payload.variantId);
       return { success: true, data: variant };
     } catch (error) {
       this.logger.error(`product.get-variant error:`, error);

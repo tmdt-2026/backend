@@ -4,7 +4,9 @@ import {
   Injectable,
   ForbiddenException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
+import axios from 'axios';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,6 +15,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { UserPayload } from './common/decorators/current-user.decorator';
 import {
   OrderPublisher,
+  ORDER_PROMOTION_RABBITMQ_CLIENT,
   ORDER_PRODUCT_RABBITMQ_CLIENT,
 } from './publishers/order.publisher';
 
@@ -29,6 +32,8 @@ type OrderDetailSummary = {
 type ProductVariantRpcResult = {
   success?: boolean;
   data?: {
+    productId?: string;
+    variantId?: string;
     isActive?: boolean;
     stockQuantity?: number;
   };
@@ -36,7 +41,9 @@ type ProductVariantRpcResult = {
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
   private readonly frontendBaseUrl = process.env.FRONTEND_URL ?? process.env.APP_URL ?? 'http://localhost:3000';
+  private readonly userServiceUrl = `${process.env.USER_SERVICE_URL ?? 'http://user-service:3001'}/api/v1`;
   private readonly internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN ?? 'internal-secret-token-change-in-production';
 
   constructor(
@@ -44,6 +51,8 @@ export class OrderService {
     private readonly publisher: OrderPublisher,
     @Inject(ORDER_PRODUCT_RABBITMQ_CLIENT)
     private readonly productClient: ClientProxy,
+    @Inject(ORDER_PROMOTION_RABBITMQ_CLIENT)
+    private readonly promotionClient: ClientProxy,
   ) {}
 
   private canManageAnyOrder(user: UserPayload) {
@@ -144,10 +153,12 @@ export class OrderService {
             price: Number(d.price),
           })),
         },
+        notificationEvent: this.buildOrderEmailBase(newOrder),
       };
     });
 
     await this.publisher.publishOrderCreated(result.event);
+    await this.publishOrderNotification('order.confirmed', result.notificationEvent);
 
     return {
       success: true,
@@ -283,22 +294,42 @@ export class OrderService {
       include: { order_details: true },
     });
     if (!order) return null;
+    const items = await Promise.all(
+      order.order_details.map(async (d) => {
+        let productId = d.product_variant_id;
+        try {
+          const rpc = await firstValueFrom(
+            this.productClient.send<ProductVariantRpcResult>(
+              { cmd: 'product.get-variant' },
+              { variantId: d.product_variant_id },
+            ),
+          );
+          if (rpc?.success && rpc.data?.productId) {
+            productId = rpc.data.productId;
+          }
+        } catch {
+          /* giữ fallback */
+        }
+        return {
+          productVariantId: d.product_variant_id,
+          productId,
+          productName: d.product_name,
+        };
+      }),
+    );
     return {
       id: order.id,
       userId: order.user_id,
       status: order.status,
-      items: order.order_details.map((d) => ({
-        productVariantId: d.product_variant_id,
-        productId: d.product_variant_id,
-        productName: d.product_name,
-      })),
+      items,
     };
   }
 
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {
-  const order = await this.prisma.order.findUnique({
-    where: { id },
-  });
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { order_details: true },
+    });
 
     if (!order) {
       throw new NotFoundException('Không tìm thấy đơn');
@@ -315,86 +346,232 @@ export class OrderService {
       cancelled: [],
     };
 
-  if (!allowedTransitions[currentStatus]) {
-    throw new BadRequestException(
-      `Trạng thái hiện tại không hợp lệ: ${currentStatus}`,
-    );
+    if (!allowedTransitions[currentStatus]) {
+      throw new BadRequestException(
+        `Trạng thái hiện tại không hợp lệ: ${currentStatus}`,
+      );
+    }
+
+    if (!allowedTransitions[currentStatus].includes(nextStatus)) {
+      throw new BadRequestException(
+        `Không thể chuyển trạng thái từ ${currentStatus} sang ${nextStatus}`,
+      );
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id },
+      data: {
+        status: nextStatus as any,
+      },
+    });
+
+    if (nextStatus === 'delivered' && order.promotion_id) {
+      try {
+        await firstValueFrom(
+          this.promotionClient.send(
+            { cmd: 'promotion.record-usage' },
+            {
+              promotionId: order.promotion_id,
+              userId: order.user_id,
+              orderId: order.id,
+            },
+          ),
+        );
+      } catch (error: any) {
+        this.logger.error(
+          `Không thể ghi nhận usage voucher cho order ${order.id}: ${error?.message || error}`,
+        );
+      }
+    }
+
+    const basePayload = this.buildOrderEmailBase(order);
+    if (nextStatus === 'confirmed') {
+      await this.publishOrderNotification('order.confirmed', basePayload);
+    } else if (nextStatus === 'shipping') {
+      await this.publishOrderNotification('order.shipped', {
+        ...basePayload,
+        estimatedDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+    } else if (nextStatus === 'delivered') {
+      await this.publishOrderNotification('order.completed', {
+        ...basePayload,
+        reviewUrl: this.buildFrontendUrl(`/orders/${order.id}/review`),
+      });
+    } else if (nextStatus === 'cancelled') {
+      await this.publishOrderNotification('order.cancelled', {
+        ...basePayload,
+        cancelReason: 'Đơn hàng đã được huỷ bởi hệ thống/quản trị viên',
+        supportUrl: this.buildFrontendUrl('/support'),
+      });
+    }
+
+    return {
+      success: true,
+      data: updated,
+    };
   }
-
-  if (!allowedTransitions[currentStatus].includes(nextStatus)) {
-    throw new BadRequestException(
-      `Không thể chuyển trạng thái từ ${currentStatus} sang ${nextStatus}`,
-    );
+  async updateStatusInternal(id: string, dto: UpdateOrderStatusDto, token?: string) {
+    if (token !== this.internalServiceToken) {
+      throw new ForbiddenException('Không có quyền cập nhật nội bộ');
+    }
+    return this.updateStatus(id, dto);
   }
-
-  const updated = await this.prisma.order.update({
-    where: { id },
-    data: {
-      status: nextStatus as any
-    },
-  });
-
-  return {
-    success: true,
-    data: updated,
-  };
-}
   async deleteOrder(id: string) {
-  const order = await this.prisma.order.findUnique({
-    where: { id },
-  });
-
-  if (!order) {
-    throw new NotFoundException('Không tìm thấy đơn');
-  }
-
-  await this.prisma.order.delete({
-    where: { id },
-  });
-
-  return {
-    success: true,
-    message: 'Đã xoá đơn hàng',
-  };
-  }
-  async cancelOrder(id: string, requester: UserPayload) {
-  const order = await this.prisma.order.findUnique({
-    where: { id },
-  });
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+    });
 
     if (!order) {
       throw new NotFoundException('Không tìm thấy đơn');
     }
 
-  const isPrivileged = this.canManageAnyOrder(requester);
-  if (!isPrivileged && order.user_id !== requester.userId) {
-    throw new ForbiddenException('Bạn không có quyền hủy đơn hàng này');
+    await this.prisma.order.delete({
+      where: { id },
+    });
+
+    return {
+      success: true,
+      message: 'Đã xoá đơn hàng',
+    };
+  }
+  async cancelOrder(id: string, requester: UserPayload) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { order_details: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn');
+    }
+
+    const isPrivileged = this.canManageAnyOrder(requester);
+    if (!isPrivileged && order.user_id !== requester.userId) {
+      throw new ForbiddenException('Bạn không có quyền hủy đơn hàng này');
+    }
+
+    if (order.status === 'delivered') {
+      throw new BadRequestException('Đơn đã hoàn thành, không thể hủy');
+    }
+
+    if (order.status === 'cancelled') {
+      throw new BadRequestException('Đơn đã bị hủy trước đó');
+    }
+
+    if (!isPrivileged && order.status !== 'pending') {
+      throw new BadRequestException('Chỉ có thể hủy đơn hàng đang chờ xác nhận');
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id },
+      data: {
+        status: 'cancelled',
+      },
+    });
+
+    const basePayload = this.buildOrderEmailBase(order);
+    await this.publishOrderNotification('order.cancelled', {
+      ...basePayload,
+      cancelReason: isPrivileged
+        ? 'Đơn hàng đã được huỷ bởi quản trị viên'
+        : 'Khách hàng đã yêu cầu huỷ đơn hàng',
+      supportUrl: this.buildFrontendUrl('/support'),
+    });
+
+    return {
+      success: true,
+      data: updated,
+    };
   }
 
-  if (order.status === 'delivered') {
-    throw new BadRequestException('Đơn đã hoàn thành, không thể hủy');
+  private async publishOrderNotification(
+    event: 'order.confirmed' | 'order.processing' | 'order.shipped' | 'order.completed' | 'order.cancelled',
+    payload: ReturnType<OrderService['buildOrderEmailBase']> & Record<string, unknown>,
+  ): Promise<void> {
+    const profile = await this.getUserProfile(payload.userId as string);
+    if (!profile.userEmail) {
+      this.logger.warn(`Skip ${event} email: missing email for user ${payload.userId}`);
+      return;
+    }
+
+    const eventPayload = {
+      ...payload,
+      userEmail: profile.userEmail,
+      userName: profile.userName,
+    };
+
+    if (event === 'order.confirmed') {
+      await this.publisher.publishOrderConfirmed(eventPayload);
+    } else if (event === 'order.processing') {
+      await this.publisher.publishOrderProcessing(eventPayload);
+    } else if (event === 'order.shipped') {
+      await this.publisher.publishOrderShipped(eventPayload);
+    } else if (event === 'order.completed') {
+      await this.publisher.publishOrderCompleted(eventPayload);
+    } else if (event === 'order.cancelled') {
+      await this.publisher.publishOrderCancelled(eventPayload);
+    }
   }
 
-  if (order.status === 'cancelled') {
-    throw new BadRequestException('Đơn đã bị hủy trước đó');
+  private buildOrderEmailBase(order: any) {
+    const orderCode = (order as any).order_code ?? `ORD-${order.id.slice(0, 8).toUpperCase()}`;
+    const shippingAddress = [
+      order.shipping_street,
+      order.shipping_ward,
+      order.shipping_district,
+      order.shipping_province,
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    return {
+      orderId: order.id,
+      orderCode,
+      userId: order.user_id,
+      orderDate: order.created_at.toISOString(),
+      items: (order.order_details ?? []).map((detail: any) => ({
+        name: detail.product_name,
+        variant: detail.variant_label ?? '',
+        quantity: Number(detail.quantity),
+        price: this.formatCurrency(Number(detail.price)),
+      })),
+      subtotal: this.formatCurrency(Number(order.subtotal_price)),
+      // Keep `discount` always present because current template marks it as required.
+      discount: this.formatCurrency(Number(order.discount_amount || 0)),
+      total: this.formatCurrency(Number(order.total_price)),
+      shippingAddress,
+      paymentMethod: order.payment_method,
+      trackingUrl: this.buildFrontendUrl(`/orders/${order.id}`),
+    };
   }
 
-  if (!isPrivileged && order.status !== 'pending') {
-    throw new BadRequestException('Chỉ có thể hủy đơn hàng đang chờ xác nhận');
+  private async getUserProfile(userId: string): Promise<{ userEmail: string; userName: string }> {
+    try {
+      const response = await axios.get(`${this.userServiceUrl}/internal/users/${userId}`, {
+        headers: {
+          'X-Service-Token': this.internalServiceToken,
+        },
+      });
+      const user = response.data?.data ?? response.data;
+      return {
+        userEmail: user?.email ?? '',
+        userName: user?.fullName ?? user?.userName ?? 'Khách hàng',
+      };
+    } catch (error: any) {
+      this.logger.warn(`Cannot load user profile ${userId}: ${error?.message || error}`);
+      return {
+        userEmail: '',
+        userName: 'Khách hàng',
+      };
+    }
   }
 
-  const updated = await this.prisma.order.update({
-    where: { id },
-    data: {
-      status: 'cancelled',
-    },
-  });
+  private buildFrontendUrl(path: string): string {
+    return `${this.frontendBaseUrl.replace(/\/$/, '')}${path}`;
+  }
 
-  return {
-    success: true,
-    data: updated,
-  };
-}
+  private formatCurrency(value: number): string {
+    return `${Number(value || 0).toLocaleString('vi-VN')} VND`;
+  }
 
   private mapOrderToResponse(order: any) {
     return {

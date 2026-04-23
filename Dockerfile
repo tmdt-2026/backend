@@ -82,6 +82,21 @@ RUN --mount=type=bind,from=build,source=/app/node_modules/.prisma,target=/build/
       echo "✅ Copied .prisma types"; \
     fi
 
+# ✅ Copy Prisma CLI to runtime so migrate deploy works
+RUN --mount=type=bind,from=build,source=/app/node_modules/prisma,target=/build/prisma \
+    --mount=type=bind,from=build,source=/app/node_modules/.bin/prisma,target=/build/prisma-bin \
+    --mount=type=bind,from=build,source=/app/node_modules/prisma/build/prisma_schema_build_bg.wasm,target=/build/prisma-schema-wasm \
+    if [ "${HAS_PRISMA}" = "true" ] && [ -d "/build/prisma" ]; then \
+      mkdir -p ./node_modules/.bin; \
+      cp -r /build/prisma ./node_modules/prisma; \
+      cp /build/prisma-bin ./node_modules/.bin/prisma; \
+      if [ -f /build/prisma-schema-wasm ]; then \
+        cp /build/prisma-schema-wasm ./node_modules/.bin/prisma_schema_build_bg.wasm; \
+      fi; \
+      chmod +x ./node_modules/.bin/prisma; \
+      echo "✅ Copied Prisma CLI"; \
+    fi
+
 # ✅ Setup prisma folder for migrations
 RUN if [ "${HAS_PRISMA}" = "true" ]; then \
       mkdir -p ./prisma; \
@@ -99,7 +114,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 CMD ["sh", "-c", "\
   if [ \"$HAS_PRISMA\" = \"true\" ] && [ -f \"./prisma/schema.prisma\" ]; then \
     echo '🔄 Running Prisma migrations...'; \
-    ./node_modules/.bin/prisma migrate deploy --schema ./prisma/schema.prisma; \
+    node ./node_modules/prisma/build/index.js migrate deploy --schema ./prisma/schema.prisma && \
     echo '✅ Migrations completed'; \
   fi && \
   echo \"🚀 Starting $APP_NAME...\" && \

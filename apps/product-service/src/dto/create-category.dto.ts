@@ -1,9 +1,17 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsInt,
+  Min,
+  IsBoolean,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateCategoryDto {
-  @IsString()
-  @IsNotEmpty()
-  id: string; // Để bạn có thể tự nhập ID là 1, 2, 3... như trong ảnh phpMyAdmin
+  @IsOptional()
+  @IsUUID()
+  id?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -14,11 +22,15 @@ export class CreateCategoryDto {
   slug: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   parentId?: string;
 
   @IsOptional()
   @IsInt()
   @Min(0)
   sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

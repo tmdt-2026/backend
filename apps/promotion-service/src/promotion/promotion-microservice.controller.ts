@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { ApplyPromotionDto } from '../dto';
+import { ApplyPromotionDto, RecordPromotionUsageDto } from '../dto';
 import { PromotionService } from './promotion.service';
 
 @Controller()
@@ -25,5 +25,10 @@ export class PromotionMicroserviceController {
   @MessagePattern({ cmd: 'promotion.find-by-code' })
   findByCode(@Payload() payload: { code: string }) {
     return this.promotionService.findByCode(payload?.code);
+  }
+
+  @MessagePattern({ cmd: 'promotion.record-usage' })
+  recordUsage(@Payload() dto: RecordPromotionUsageDto) {
+    return this.promotionService.recordPromotionUsage(dto);
   }
 }

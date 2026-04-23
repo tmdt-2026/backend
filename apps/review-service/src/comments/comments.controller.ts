@@ -7,6 +7,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { ReplyCommentDto } from './dto/reply-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { QueryCommentsDto } from './dto/query-comments.dto';
+import { QueryAdminCommentsDto } from './dto/query-admin-comments.dto';
 import { UpdateCommentVisibilityDto } from './dto/update-visibility.dto';
 import { CurrentUser, UserPayload } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -23,6 +24,12 @@ export class CommentsController {
     @Query() query: QueryCommentsDto,
   ) {
     return this.commentsService.getByProduct(productId, query);
+  }
+
+  @Get()
+  @Roles('admin')
+  getAllAdmin(@Query() query: QueryAdminCommentsDto) {
+    return this.commentsService.getAllAdmin(query);
   }
 
   @Post()

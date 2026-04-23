@@ -11,6 +11,7 @@ export interface OrderRpcResponse {
   status: string;
   items: Array<{
     productVariantId: string;
+    /** ID sản phẩm (đã resolve từ biến thể) */
     productId: string;
     productName: string;
   }>;

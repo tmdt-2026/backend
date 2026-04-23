@@ -44,6 +44,25 @@ export class CommentsRepository {
     });
   }
 
+  async findAllAdmin(params: {
+    skip: number;
+    take: number;
+    where?: Prisma.CommentWhereInput;
+    orderBy?: Prisma.CommentOrderByWithRelationInput;
+  }): Promise<[Comment[], number]> {
+    const where = params.where ?? {};
+    const orderBy = params.orderBy ?? { createdAt: 'desc' as const };
+    return this.prisma.$transaction([
+      this.prisma.comment.findMany({
+        where,
+        skip: params.skip,
+        take: params.take,
+        orderBy,
+      }),
+      this.prisma.comment.count({ where }),
+    ]);
+  }
+
   async create(data: Prisma.CommentCreateInput): Promise<Comment> {
     return this.prisma.comment.create({ data });
   }

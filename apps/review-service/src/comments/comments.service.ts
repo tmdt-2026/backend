@@ -8,6 +8,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { ReplyCommentDto } from './dto/reply-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { QueryCommentsDto } from './dto/query-comments.dto';
+import { QueryAdminCommentsDto } from './dto/query-admin-comments.dto';
 import { UpdateCommentVisibilityDto } from './dto/update-visibility.dto';
 import { UserPayload } from '../common/decorators/current-user.decorator';
 import {
@@ -18,6 +19,7 @@ import {
   ProductNotFoundException,
 } from '../common/exceptions/review.exceptions';
 import { Comment } from '@prisma/review-client';
+import { Prisma } from '@prisma/review-client';
 
 @Injectable()
 export class CommentsService {
@@ -74,6 +76,50 @@ export class CommentsService {
     return {
       success: true,
       data: tree,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async getAllAdmin(query: QueryAdminCommentsDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.CommentWhereInput = {};
+    if (query.productId) where.productId = query.productId;
+    if (query.userId) where.userId = query.userId;
+    if (query.isVisible !== undefined) where.isVisible = query.isVisible;
+
+    const orderBy: Prisma.CommentOrderByWithRelationInput = {
+      [query.sortBy ?? 'createdAt']: query.sortOrder ?? 'desc',
+    };
+
+    const [comments, total] = await this.commentsRepository.findAllAdmin({
+      skip,
+      take: limit,
+      where,
+      orderBy,
+    });
+
+    const productNameCache = new Map<string, string>();
+    await Promise.all(
+      comments.map(async (comment) => {
+        if (productNameCache.has(comment.productId)) return;
+        try {
+          const product = await this.productRpc.getProductById(comment.productId);
+          productNameCache.set(comment.productId, product?.name ?? '');
+        } catch {
+          productNameCache.set(comment.productId, '');
+        }
+      }),
+    );
+
+    return {
+      success: true,
+      data: comments.map((comment) => ({
+        ...this.mapComment(comment),
+        productNameSnapshot: productNameCache.get(comment.productId) ?? '',
+      })),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
