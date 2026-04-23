@@ -46,6 +46,7 @@ model OrderDetail {
   order_id           String  @db.Char(36)
   product_variant_id String  @db.Char(36)
   product_name       String  @db.VarChar(255)
+  product_image      String? @db.VarChar(500)
   variant_label      String? @db.VarChar(255)
 
   quantity      Int

@@ -21,6 +21,10 @@ class CreateOrderItemDto {
 
   @IsOptional()
   @IsString()
+  product_image?: string;
+
+  @IsOptional()
+  @IsString()
   variant_label?: string;
 
   @IsNumber()

@@ -22,6 +22,7 @@ import {
 type OrderDetailSummary = {
   product_variant_id: string;
   product_name: string;
+  product_image?: string | null;
   variant_label?: string | null;
   quantity: number;
   import_price: unknown;
@@ -111,6 +112,7 @@ export class OrderService {
             create: dto.items.map((item) => ({
               product_variant_id: item.product_variant_id,
               product_name: item.product_name,
+              product_image: item.product_image || null,
               variant_label: item.variant_label || null,
               quantity: item.quantity,
               import_price: item.import_price,
@@ -239,6 +241,7 @@ export class OrderService {
       items: o.order_details.map((d) => ({
         product_variant_id: d.product_variant_id,
         product_name: d.product_name,
+        product_image: (d as any).product_image ?? null,
         variant_label: d.variant_label,
         quantity: d.quantity,
         price: Number(d.price),
@@ -314,6 +317,7 @@ export class OrderService {
           productVariantId: d.product_variant_id,
           productId,
           productName: d.product_name,
+          productImage: (d as any).product_image ?? null,
         };
       }),
     );
@@ -603,6 +607,7 @@ export class OrderService {
       items: order.order_details?.map((d: any) => ({
         product_variant_id: d.product_variant_id,
         product_name: d.product_name,
+        product_image: d.product_image ?? null,
         variant_label: d.variant_label,
         quantity: d.quantity,
         import_price: Number(d.import_price),

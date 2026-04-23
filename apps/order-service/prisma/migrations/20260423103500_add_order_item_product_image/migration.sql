@@ -1,0 +1,17 @@
+SET @column_exists := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'ORDER_DETAILS'
+    AND COLUMN_NAME = 'product_image'
+);
+
+SET @ddl := IF(
+  @column_exists = 0,
+  'ALTER TABLE `ORDER_DETAILS` ADD COLUMN `product_image` VARCHAR(500) NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
