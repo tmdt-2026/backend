@@ -409,6 +409,52 @@ export class ProductService {
       isActive: variant.isActive,
     };
   }
+
+  /**
+   * Trừ tồn kho biến thể (stockQuantity) khi đặt hàng — atomic theo từng dòng.
+   */
+  async decrementStocksForOrder(items: Array<{ variantId: string; quantity: number }>) {
+    if (!items?.length) return;
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        const qty = Number(item.quantity);
+        if (!Number.isFinite(qty) || qty <= 0) {
+          throw new BadRequestException(`Số lượng không hợp lệ cho biến thể ${item.variantId}`);
+        }
+        const res = await tx.productVariant.updateMany({
+          where: {
+            id: item.variantId,
+            deletedAt: null,
+            stockQuantity: { gte: qty },
+          },
+          data: { stockQuantity: { decrement: qty } },
+        });
+        if (res.count !== 1) {
+          throw new BadRequestException(
+            `Không đủ tồn kho cho biến thể ${item.variantId} (yêu cầu ${qty})`,
+          );
+        }
+      }
+    });
+  }
+
+  /**
+   * Hoàn tồn kho khi hủy đơn / xóa đơn (best-effort nếu variant đã bị xóa mềm).
+   */
+  async incrementStocksForOrder(items: Array<{ variantId: string; quantity: number }>) {
+    if (!items?.length) return;
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        const qty = Number(item.quantity);
+        if (!Number.isFinite(qty) || qty <= 0) continue;
+        await tx.productVariant.updateMany({
+          where: { id: item.variantId, deletedAt: null },
+          data: { stockQuantity: { increment: qty } },
+        });
+      }
+    });
+  }
+
   // ==================== CATEGORY ====================
   async createCategory(data: CreateCategoryDto) {
     return this.prisma.category.create({

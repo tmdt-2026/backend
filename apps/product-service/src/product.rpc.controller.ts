@@ -116,4 +116,40 @@ export class ProductRpcController {
       throw error;
     }
   }
+
+  /**
+   * Trừ stockQuantity khi tạo đơn (order-service).
+   * cmd: product.decrement-stocks-for-order
+   */
+  @MessagePattern({ cmd: 'product.decrement-stocks-for-order' })
+  async decrementStocksForOrder(
+    @Payload() payload: { items: Array<{ variantId: string; quantity: number }> },
+  ) {
+    try {
+      await this.productService.decrementStocksForOrder(payload?.items ?? []);
+      return { success: true };
+    } catch (error: any) {
+      const message = error?.message ?? 'Không thể trừ tồn kho';
+      this.logger.warn(`product.decrement-stocks-for-order: ${message}`);
+      return { success: false, message };
+    }
+  }
+
+  /**
+   * Cộng lại stockQuantity khi hủy đơn (order-service).
+   * cmd: product.increment-stocks-for-order
+   */
+  @MessagePattern({ cmd: 'product.increment-stocks-for-order' })
+  async incrementStocksForOrder(
+    @Payload() payload: { items: Array<{ variantId: string; quantity: number }> },
+  ) {
+    try {
+      await this.productService.incrementStocksForOrder(payload?.items ?? []);
+      return { success: true };
+    } catch (error: any) {
+      const message = error?.message ?? 'Không thể hoàn tồn kho';
+      this.logger.error(`product.increment-stocks-for-order: ${message}`);
+      return { success: false, message };
+    }
+  }
 }

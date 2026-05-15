@@ -25,13 +25,14 @@ export class OrderPublisher {
   }
 
   async publishOrderConfirmed(data: Record<string, unknown>): Promise<void> {
-    await Promise.all([
-      this.publish(this.notificationClient, 'order.confirmed', data),
-      this.publish(this.inventoryClient, 'order.confirmed', {
-        orderId: data.orderId,
-        confirmedAt: data.confirmedAt,
-      }),
-    ]);
+    await this.publish(this.notificationClient, 'order.confirmed', data);
+  }
+
+  async publishInventoryConfirmed(orderId: string): Promise<void> {
+    await this.publish(this.inventoryClient, 'order.confirmed', {
+      orderId,
+      confirmedAt: new Date().toISOString(),
+    });
   }
 
   async publishOrderProcessing(data: Record<string, unknown>): Promise<void> {
@@ -47,14 +48,15 @@ export class OrderPublisher {
   }
 
   async publishOrderCancelled(data: Record<string, unknown>): Promise<void> {
-    await Promise.all([
-      this.publish(this.notificationClient, 'order.cancelled', data),
-      this.publish(this.inventoryClient, 'order.cancelled', {
-        orderId: data.orderId,
-        cancelledAt: data.cancelledAt,
-        reason: data.cancelReason,
-      }),
-    ]);
+    await this.publish(this.notificationClient, 'order.cancelled', data);
+  }
+
+  async publishInventoryCancelled(orderId: string): Promise<void> {
+    await this.publish(this.inventoryClient, 'order.cancelled', {
+      orderId,
+      cancelledAt: new Date().toISOString(),
+      reason: 'Order cancelled',
+    });
   }
 
   private async publish(client: ClientProxy, pattern: string, payload: Record<string, unknown>): Promise<void> {

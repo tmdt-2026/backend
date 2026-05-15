@@ -40,6 +40,13 @@ type ProductVariantRpcResult = {
   };
 };
 
+type StockLine = { variantId: string; quantity: number };
+
+type ProductStockMutationRpcResult = {
+  success?: boolean;
+  message?: string;
+};
+
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
@@ -159,6 +166,20 @@ export class OrderService {
       };
     });
 
+    const stockItems: StockLine[] = dto.items.map((item) => ({
+      variantId: item.product_variant_id,
+      quantity: Number(item.quantity),
+    }));
+
+    try {
+      await this.productDecrementStocks(stockItems);
+    } catch (err) {
+      await this.prisma.order.delete({ where: { id: result.event.orderId } }).catch(() => {
+        /* best-effort rollback */
+      });
+      throw err;
+    }
+
     await this.publisher.publishOrderCreated(result.event);
     await this.publishOrderNotification('order.confirmed', result.notificationEvent);
 
@@ -166,6 +187,45 @@ export class OrderService {
       success: true,
       data: result.data,
     };
+  }
+
+  private buildStockLinesFromDetails(
+    details: Array<{ product_variant_id: string; quantity: number }>,
+  ): StockLine[] {
+    return details.map((d) => ({
+      variantId: d.product_variant_id,
+      quantity: Number(d.quantity),
+    }));
+  }
+
+  private async productDecrementStocks(items: StockLine[]) {
+    if (!items.length) return;
+    const resp = await firstValueFrom(
+      this.productClient.send<ProductStockMutationRpcResult>(
+        { cmd: 'product.decrement-stocks-for-order' },
+        { items },
+      ),
+    );
+    if (!resp?.success) {
+      throw new BadRequestException(resp?.message ?? 'Không thể trừ tồn kho sản phẩm');
+    }
+  }
+
+  private async productIncrementStocks(items: StockLine[]) {
+    if (!items.length) return;
+    try {
+      const resp = await firstValueFrom(
+        this.productClient.send<ProductStockMutationRpcResult>(
+          { cmd: 'product.increment-stocks-for-order' },
+          { items },
+        ),
+      );
+      if (!resp?.success) {
+        this.logger.warn(`Hoàn tồn kho thất bại: ${resp?.message ?? 'unknown'}`);
+      }
+    } catch (error: any) {
+      this.logger.warn(`Hoàn tồn kho lỗi RPC: ${error?.message || error}`);
+    }
   }
 
   private async validateOrderVariants(dto: CreateOrderDto) {
@@ -369,6 +429,10 @@ export class OrderService {
       },
     });
 
+    if (nextStatus === 'cancelled') {
+      await this.productIncrementStocks(this.buildStockLinesFromDetails(order.order_details));
+    }
+
     if (nextStatus === 'delivered' && order.promotion_id) {
       try {
         await firstValueFrom(
@@ -386,6 +450,13 @@ export class OrderService {
           `Không thể ghi nhận usage voucher cho order ${order.id}: ${error?.message || error}`,
         );
       }
+    }
+
+    // Inventory events must always fire, independent of notification email success.
+    if (nextStatus === 'confirmed') {
+      await this.publisher.publishInventoryConfirmed(order.id);
+    } else if (nextStatus === 'cancelled') {
+      await this.publisher.publishInventoryCancelled(order.id);
     }
 
     const basePayload = this.buildOrderEmailBase(order);
@@ -423,10 +494,15 @@ export class OrderService {
   async deleteOrder(id: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
+      include: { order_details: true },
     });
 
     if (!order) {
       throw new NotFoundException('Không tìm thấy đơn');
+    }
+
+    if (order.status !== 'cancelled') {
+      await this.productIncrementStocks(this.buildStockLinesFromDetails(order.order_details));
     }
 
     await this.prisma.order.delete({
@@ -471,6 +547,10 @@ export class OrderService {
         status: 'cancelled',
       },
     });
+
+    await this.productIncrementStocks(this.buildStockLinesFromDetails(order.order_details));
+
+    await this.publisher.publishInventoryCancelled(order.id);
 
     const basePayload = this.buildOrderEmailBase(order);
     await this.publishOrderNotification('order.cancelled', {
